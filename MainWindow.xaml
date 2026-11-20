@@ -1,0 +1,143 @@
+﻿<ui:FluentWindow x:Class="PulseGuard.MainWindow"
+                 xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                 xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                 xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+                 xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+                 xmlns:pages="clr-namespace:PulseGuard.Views.Pages"
+                 xmlns:tray="http://schemas.lepo.co/wpfui/2022/xaml/tray"
+                 xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+                 mc:Ignorable="d"
+                 Title="{Binding ViewModel.ApplicationTitle}"
+                 Width="1060"
+                 Height="680"
+                 MinWidth="820"
+                 MinHeight="520"
+                 ExtendsContentIntoTitleBar="True"
+                 WindowBackdropType="Mica"
+                 WindowCornerPreference="Round"
+                 WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar
+            Grid.Row="0"
+            Title="{Binding ViewModel.ApplicationTitle}"
+            ShowMaximize="True"
+            ShowMinimize="True">
+            <ui:TitleBar.TrailingContent>
+                <ToggleButton
+                    Margin="0,0,8,0"
+                    Padding="8,4"
+                    VerticalAlignment="Center"
+                    IsChecked="{Binding ViewModel.IsOverlayVisible, Mode=OneWay}"
+                    Command="{Binding ViewModel.ToggleOverlayCommand}"
+                    ToolTip="Показать / скрыть мини-виджет (оверлей)">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon
+                            Margin="0,0,6,0"
+                            FontSize="14"
+                            Symbol="PictureInPicture20" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Text="Мини-виджет" />
+                    </StackPanel>
+                </ToggleButton>
+            </ui:TitleBar.TrailingContent>
+        </ui:TitleBar>
+
+        <ui:NavigationView
+            x:Name="RootNavigation"
+            Grid.Row="1"
+            IsBackButtonVisible="Collapsed"
+            IsPaneToggleVisible="True"
+            OpenPaneLength="210"
+            PaneDisplayMode="Left">
+            <ui:NavigationView.MenuItems>
+                <ui:NavigationViewItem
+                    Content="Мониторинг"
+                    TargetPageType="{x:Type pages:MonitoringPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Pulse24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem
+                    Content="Оптимизация"
+                    TargetPageType="{x:Type pages:OptimizationPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Broom24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem
+                    Content="Процессы"
+                    TargetPageType="{x:Type pages:ProcessesPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="AppsList24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.MenuItems>
+
+            <ui:NavigationView.FooterMenuItems>
+                <ui:NavigationViewItem
+                    Content="Настройки"
+                    TargetPageType="{x:Type pages:SettingsPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Settings24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+            </ui:NavigationView.FooterMenuItems>
+        </ui:NavigationView>
+
+        <Border
+            Grid.Row="2"
+            Padding="16,6"
+            BorderBrush="{ui:ThemeResource ControlStrokeColorDefaultBrush}"
+            BorderThickness="0,1,0,0">
+            <TextBlock
+                FontSize="12"
+                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                Text="{Binding ViewModel.StatusMessage}" />
+        </Border>
+
+        <tray:NotifyIcon
+            x:Name="AppNotifyIcon"
+            FocusOnLeftClick="True"
+            Icon="{Binding ViewModel.TrayIconSource}"
+            LeftClick="NotifyIcon_OnLeftClick"
+            LeftDoubleClick="NotifyIcon_OnLeftClick"
+            MenuOnRightClick="True"
+            TooltipText="PulseGuard — Системный монитор">
+            <tray:NotifyIcon.Menu>
+                <ContextMenu>
+                    <ui:MenuItem
+                        Command="{Binding ViewModel.ShowWindowCommand}"
+                        Header="Открыть"
+                        Icon="{ui:SymbolIcon Open24}" />
+                    <ui:MenuItem
+                        Command="{Binding ViewModel.ToggleOverlayCommand}"
+                        Header="Показать / скрыть мини-виджет"
+                        Icon="{ui:SymbolIcon PictureInPicture24}"
+                        IsChecked="{Binding ViewModel.IsOverlayVisible, Mode=OneWay}" />
+                    <ui:MenuItem
+                        Command="{Binding ViewModel.ToggleVpnCommand}"
+                        Header="VPN: Подключить / Отключить"
+                        Icon="{ui:SymbolIcon Shield24}" />
+                    <ui:MenuItem
+                        Command="{Binding ViewModel.QuickRamCleanCommand}"
+                        Header="Быстрая очистка ОЗУ"
+                        Icon="{ui:SymbolIcon Broom24}" />
+                    <Separator />
+                    <ui:MenuItem
+                        Command="{Binding ViewModel.ExitApplicationCommand}"
+                        Header="Выход"
+                        Icon="{ui:SymbolIcon Power24}" />
+                </ContextMenu>
+            </tray:NotifyIcon.Menu>
+        </tray:NotifyIcon>
+    </Grid>
+</ui:FluentWindow>

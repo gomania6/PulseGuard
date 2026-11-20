@@ -1,0 +1,225 @@
+<Page x:Class="PulseGuard.Views.Pages.OptimizationPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      mc:Ignorable="d"
+      d:DesignHeight="640"
+      d:DesignWidth="900"
+      Title="Оптимизация">
+
+    <ui:DynamicScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        PanningMode="VerticalOnly">
+        <StackPanel Margin="20,20,20,24">
+            <!-- Header -->
+            <TextBlock
+                Margin="0,0,0,16"
+                FontSize="22"
+                FontWeight="SemiBold"
+                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                Text="{Binding ViewModel.Title}" />
+
+            <!-- Card 1: Safe RAM Cleaner -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon
+                                Margin="0,0,10,0"
+                                FontSize="22"
+                                Foreground="#00E5A0"
+                                Symbol="Memory16" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Безопасная очистка ОЗУ" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontSize="14"
+                            FontWeight="Medium"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="{Binding ViewModel.RamStatusText}" />
+
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.RamActionStatus}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <ui:Button
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Appearance="Primary"
+                        Command="{Binding ViewModel.CleanRamCommand}"
+                        Content="Освободить память"
+                        Icon="{ui:SymbolIcon Broom24}"
+                        IsEnabled="{Binding ViewModel.CanCleanRam}"
+                        Padding="16,10" />
+                </Grid>
+            </ui:Card>
+
+            <!-- Card 2: Temporary Files Cleaner -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,12">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                            <ui:Button
+                                Margin="0,0,8,0"
+                                Command="{Binding ViewModel.AnalyzeTempCommand}"
+                                Content="Анализировать"
+                                Icon="{ui:SymbolIcon Search24}"
+                                IsEnabled="{Binding ViewModel.CanAnalyzeTemp}"
+                                Padding="14,8" />
+                            <ui:Button
+                                Appearance="Primary"
+                                Command="{Binding ViewModel.CleanTempCommand}"
+                                Content="Очистить выбранное"
+                                Icon="{ui:SymbolIcon Delete24}"
+                                IsEnabled="{Binding ViewModel.CanCleanTemp}"
+                                Padding="14,8" />
+                        </StackPanel>
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon
+                                Margin="0,0,10,0"
+                                FontSize="22"
+                                Foreground="#00B2FF"
+                                Symbol="Folder24" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Очистка временных файлов" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <!-- Target Checkboxes + Per-Target Analysis -->
+                    <Grid Margin="0,4,0,0">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <CheckBox
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            Margin="0,0,0,6"
+                            Content="Временные файлы пользователя (%TEMP%)"
+                            IsChecked="{Binding ViewModel.IncludeUserTemp, Mode=TwoWay}" />
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            Margin="16,0,0,6"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.UserTempInfo}" />
+
+                        <CheckBox
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            Margin="0,0,0,6"
+                            Content="Временные файлы системы (C:\Windows\Temp)"
+                            IsChecked="{Binding ViewModel.IncludeSystemTemp, Mode=TwoWay}" />
+                        <TextBlock
+                            Grid.Row="1"
+                            Grid.Column="1"
+                            Margin="16,0,0,6"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.SystemTempInfo}" />
+
+                        <CheckBox
+                            Grid.Row="2"
+                            Grid.Column="0"
+                            Content="Корзина Windows"
+                            IsChecked="{Binding ViewModel.IncludeRecycleBin, Mode=TwoWay}" />
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Margin="16,0,0,0"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.RecycleBinInfo}" />
+                    </Grid>
+
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{Binding ViewModel.TempActionStatus}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Card 3: Game Mode -->
+            <ui:Card Padding="20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon
+                                Margin="0,0,10,0"
+                                FontSize="22"
+                                Foreground="#FFB900"
+                                Symbol="Games24" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Игровой режим (Game Mode)" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontSize="13"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Переключает схему электропитания Windows на «Высокую производительность» и понижает приоритет фоновых программ (chrome, firefox, msedge, opera, brave, discord, telegram, qbittorrent, steamwebhelper) до BelowNormal. При выключении или закрытии приложения исходные настройки полностью восстанавливаются."
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontSize="12"
+                            FontWeight="Medium"
+                            Foreground="#FFB900"
+                            Text="{Binding ViewModel.GameModeStatus}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <ui:ToggleSwitch
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        IsChecked="{Binding ViewModel.IsGameModeEnabled, Mode=TwoWay}"
+                        IsEnabled="{Binding ViewModel.CanToggleGameMode}" />
+                </Grid>
+            </ui:Card>
+        </StackPanel>
+    </ui:DynamicScrollViewer>
+</Page>

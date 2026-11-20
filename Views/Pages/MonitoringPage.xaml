@@ -1,0 +1,389 @@
+<Page x:Class="PulseGuard.Views.Pages.MonitoringPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.WPF;assembly=LiveChartsCore.SkiaSharpView.WPF"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      mc:Ignorable="d"
+      d:DesignHeight="640"
+      d:DesignWidth="900"
+      Title="Мониторинг">
+
+    <Page.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Page.Resources>
+
+    <ui:DynamicScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        PanningMode="VerticalOnly">
+        <Grid Margin="20,20,20,24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Header -->
+            <TextBlock
+                Grid.Row="0"
+                Margin="0,0,0,16"
+                FontSize="22"
+                FontWeight="SemiBold"
+                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                Text="{Binding ViewModel.Title}" />
+
+            <!-- 4 Metric Cards -->
+            <UniformGrid Grid.Row="1" Columns="4">
+                <!-- CPU Card -->
+                <ui:Card
+                    Margin="0,0,8,0"
+                    Padding="16"
+                    VerticalAlignment="Stretch"
+                    ToolTip="{Binding ViewModel.CpuCardTooltip}">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <ui:SymbolIcon
+                                DockPanel.Dock="Right"
+                                FontSize="20"
+                                Foreground="#00B2FF"
+                                Symbol="DeveloperBoard24" />
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="CPU" />
+                        </DockPanel>
+                        <TextBlock
+                            FontSize="28"
+                            FontWeight="Bold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="{Binding ViewModel.CpuLoadText}" />
+                        <ProgressBar
+                            Height="6"
+                            Margin="0,8,0,10"
+                            Maximum="100"
+                            Minimum="0"
+                            Value="{Binding ViewModel.CpuLoadPercent}" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{Binding ViewModel.CpuTempText, StringFormat='Температура: {0}'}"
+                                ToolTip="{Binding ViewModel.CpuTempTooltip}" />
+                            <ui:Button
+                                Margin="6,0,0,0"
+                                Padding="5,1"
+                                Command="{Binding ViewModel.ShowDriverHelpCommand}"
+                                Content="?"
+                                FontSize="11"
+                                ToolTip="Как включить датчики температуры?"
+                                Visibility="{Binding ViewModel.IsCpuTempBlocked, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </StackPanel>
+                        <TextBlock
+                            Margin="0,2,0,0"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.CpuClockText, StringFormat='Частота: {0}'}" />
+                    </StackPanel>
+                </ui:Card>
+
+                <!-- GPU Card -->
+                <ui:Card Margin="4,0,4,0" Padding="16" VerticalAlignment="Stretch">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <ui:SymbolIcon
+                                DockPanel.Dock="Right"
+                                FontSize="20"
+                                Foreground="#00E5A0"
+                                Symbol="Desktop24" />
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="GPU" />
+                        </DockPanel>
+                        <TextBlock
+                            FontSize="28"
+                            FontWeight="Bold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="{Binding ViewModel.GpuLoadText}" />
+                        <ProgressBar
+                            Height="6"
+                            Margin="0,8,0,10"
+                            Maximum="100"
+                            Minimum="0"
+                            Value="{Binding ViewModel.GpuLoadPercent}" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.GpuTempText, StringFormat='Температура: {0}'}" />
+                        <TextBlock
+                            Margin="0,2,0,0"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.GpuVramText}" />
+                    </StackPanel>
+                </ui:Card>
+
+                <!-- RAM Card -->
+                <ui:Card Margin="4,0,4,0" Padding="16" VerticalAlignment="Stretch">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <ui:SymbolIcon
+                                DockPanel.Dock="Right"
+                                FontSize="20"
+                                Foreground="#B388FF"
+                                Symbol="Memory16" />
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="ОЗУ (RAM)" />
+                        </DockPanel>
+                        <TextBlock
+                            FontSize="28"
+                            FontWeight="Bold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="{Binding ViewModel.RamLoadText}" />
+                        <ProgressBar
+                            Height="6"
+                            Margin="0,8,0,10"
+                            Maximum="100"
+                            Minimum="0"
+                            Value="{Binding ViewModel.RamLoadPercent}" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.RamUsageText, StringFormat='Занято: {0}'}" />
+                    </StackPanel>
+                </ui:Card>
+
+                <!-- Network Card -->
+                <ui:Card Margin="8,0,0,0" Padding="16" VerticalAlignment="Stretch">
+                    <StackPanel>
+                        <DockPanel Margin="0,0,0,8">
+                            <ui:SymbolIcon
+                                DockPanel.Dock="Right"
+                                FontSize="20"
+                                Foreground="#FFA600"
+                                Symbol="Globe24" />
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Сеть" />
+                        </DockPanel>
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Скачивание (Download)" />
+                        <TextBlock
+                            Margin="0,2,0,8"
+                            FontSize="20"
+                            FontWeight="Bold"
+                            Foreground="#7C5CFF"
+                            Text="{Binding ViewModel.NetworkDownloadText}" />
+                        <TextBlock
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Отдача (Upload)" />
+                        <TextBlock
+                            Margin="0,2,0,0"
+                            FontSize="18"
+                            FontWeight="SemiBold"
+                            Foreground="#FFA600"
+                            Text="{Binding ViewModel.NetworkUploadText}" />
+                    </StackPanel>
+                </ui:Card>
+            </UniformGrid>
+
+            <!-- VPN Tunnel Status Card -->
+            <ui:Card Grid.Row="2" Margin="0,12,0,0" Padding="16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="#00B2FF"
+                            Symbol="Shield24" />
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="VPN-туннель" />
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse
+                                    Width="9"
+                                    Height="9"
+                                    Margin="0,0,6,0"
+                                    VerticalAlignment="Center"
+                                    Fill="{Binding ViewModel.VpnStatusBrush}" />
+                                <TextBlock
+                                    FontSize="15"
+                                    FontWeight="SemiBold"
+                                    Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                    Text="{Binding ViewModel.VpnStatusText}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </StackPanel>
+
+                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center" Margin="0,0,16,0">
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Сервер" />
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="{Binding ViewModel.VpnServerText}"
+                                TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Внешний IP" />
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="{Binding ViewModel.VpnIpText}" />
+                        </StackPanel>
+
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="11"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Пинг (1.1.1.1)" />
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="{Binding ViewModel.VpnPingText}" />
+                        </StackPanel>
+                    </UniformGrid>
+
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:Button
+                            Margin="0,0,8,0"
+                            Appearance="Primary"
+                            Command="{Binding ViewModel.ToggleVpnCommand}"
+                            Content="{Binding ViewModel.VpnToggleButtonText}"
+                            Padding="12,6" />
+                        <ui:Button
+                            Command="{Binding ViewModel.RestartVpnCommand}"
+                            Content="Перезапустить"
+                            Icon="{ui:SymbolIcon ArrowSync20}"
+                            Padding="10,6" />
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+
+            <!-- Real-time Charts (Last 60 Seconds) -->
+            <Grid Grid.Row="3" Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="12" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <ui:Card Grid.Column="0" Padding="16">
+                    <StackPanel>
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Text="Загрузка CPU и GPU (60 сек)" />
+                        <lvc:CartesianChart
+                            Height="210"
+                            AnimationsSpeed="00:00:00"
+                            Background="Transparent"
+                            DrawMarginFrame="{Binding ViewModel.ChartDrawMarginFrame}"
+                            EasingFunction="{x:Null}"
+                            LegendTextPaint="{Binding ViewModel.ChartLegendTextPaint}"
+                            Series="{Binding ViewModel.CpuGpuSeries}"
+                            TooltipBackgroundPaint="{Binding ViewModel.ChartTooltipBackgroundPaint}"
+                            TooltipTextPaint="{Binding ViewModel.ChartTooltipTextPaint}"
+                            XAxes="{Binding ViewModel.HiddenXAxes}"
+                            YAxes="{Binding ViewModel.CpuGpuYAxes}" />
+                    </StackPanel>
+                </ui:Card>
+
+                <ui:Card Grid.Column="2" Padding="16">
+                    <StackPanel>
+                        <TextBlock
+                            Margin="0,0,0,8"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Text="Сетевой трафик, Мбит/с (60 сек)" />
+                        <lvc:CartesianChart
+                            Height="210"
+                            AnimationsSpeed="00:00:00"
+                            Background="Transparent"
+                            DrawMarginFrame="{Binding ViewModel.ChartDrawMarginFrame}"
+                            EasingFunction="{x:Null}"
+                            LegendTextPaint="{Binding ViewModel.ChartLegendTextPaint}"
+                            Series="{Binding ViewModel.NetworkSeries}"
+                            TooltipBackgroundPaint="{Binding ViewModel.ChartTooltipBackgroundPaint}"
+                            TooltipTextPaint="{Binding ViewModel.ChartTooltipTextPaint}"
+                            XAxes="{Binding ViewModel.HiddenXAxes}"
+                            YAxes="{Binding ViewModel.NetworkYAxes}" />
+                    </StackPanel>
+                </ui:Card>
+            </Grid>
+
+            <!-- Peak Alerts Log -->
+            <ui:Card Grid.Row="4" Margin="0,16,0,0" Padding="16">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,8">
+                        <ui:Button
+                            Command="{Binding ViewModel.ClearAlertsCommand}"
+                            Content="Очистить"
+                            DockPanel.Dock="Right"
+                            Padding="10,4" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon
+                                Margin="0,0,8,0"
+                                FontSize="18"
+                                Foreground="#FF6B6B"
+                                Symbol="Warning24" />
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Text="Лог пиков (CPU/GPU &gt; 85°C, ОЗУ &gt; 90%)" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <ListBox
+                        MaxHeight="130"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        ItemsSource="{Binding ViewModel.AlertLogs}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock
+                                    FontSize="12"
+                                    Foreground="#FF9E9E"
+                                    Text="{Binding}" />
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </ui:Card>
+        </Grid>
+    </ui:DynamicScrollViewer>
+</Page>

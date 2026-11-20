@@ -1,0 +1,239 @@
+<Window x:Class="PulseGuard.Modules.Overlay.OverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        mc:Ignorable="d"
+        Title="PulseGuard Overlay"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowActivated="False"
+        ShowInTaskbar="False"
+        SizeToContent="WidthAndHeight"
+        Topmost="True"
+        WindowStartupLocation="Manual"
+        WindowStyle="None">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
+
+    <Border
+        x:Name="RootPill"
+        Padding="12,7"
+        Background="{Binding ViewModel.PanelBackground}"
+        BorderBrush="#33FFFFFF"
+        BorderThickness="1"
+        CornerRadius="12">
+        <Border.Style>
+            <Style TargetType="Border">
+                <Setter Property="Cursor" Value="SizeAll" />
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding ViewModel.IsPositionLocked}" Value="True">
+                        <Setter Property="Cursor" Value="Arrow" />
+                    </DataTrigger>
+                </Style.Triggers>
+            </Style>
+        </Border.Style>
+
+        <StackPanel Orientation="{Binding ViewModel.LayoutOrientation}" VerticalAlignment="Center">
+            <!-- CPU -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Visibility="{Binding ViewModel.ShowCpu, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ui:SymbolIcon
+                    Margin="0,0,5,0"
+                    FontSize="14"
+                    Foreground="#00B2FF"
+                    Symbol="Pulse20"
+                    Visibility="{Binding ViewModel.ShowIcons, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="#A0FFFFFF"
+                    Text="CPU: " />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="{Binding ViewModel.CpuText}" />
+            </StackPanel>
+
+            <!-- GPU -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Visibility="{Binding ViewModel.ShowGpu, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ui:SymbolIcon
+                    Margin="0,0,5,0"
+                    FontSize="14"
+                    Foreground="#00E5A0"
+                    Symbol="Desktop20"
+                    Visibility="{Binding ViewModel.ShowIcons, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="#A0FFFFFF"
+                    Text="GPU: " />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="{Binding ViewModel.GpuText}" />
+            </StackPanel>
+
+            <!-- RAM -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Visibility="{Binding ViewModel.ShowRam, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ui:SymbolIcon
+                    Margin="0,0,5,0"
+                    FontSize="14"
+                    Foreground="#7C5CFF"
+                    Symbol="Memory16"
+                    Visibility="{Binding ViewModel.ShowIcons, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="#A0FFFFFF"
+                    Text="ОЗУ: " />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="{Binding ViewModel.RamText}" />
+            </StackPanel>
+
+            <!-- Network -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Visibility="{Binding ViewModel.ShowNetwork, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ui:SymbolIcon
+                    Margin="0,0,5,0"
+                    FontSize="14"
+                    Foreground="#FFA600"
+                    Symbol="ArrowSort20"
+                    Visibility="{Binding ViewModel.ShowIcons, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    Foreground="#A0FFFFFF"
+                    Text="Сеть: " />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="{Binding ViewModel.NetworkText}" />
+            </StackPanel>
+
+            <!-- VPN -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Visibility="{Binding ViewModel.ShowVpn, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Ellipse
+                    Width="8"
+                    Height="8"
+                    Margin="0,0,6,0"
+                    VerticalAlignment="Center"
+                    Fill="{Binding ViewModel.VpnDotBrush}" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="White"
+                    Text="{Binding ViewModel.VpnText}" />
+            </StackPanel>
+
+            <!-- Fallback if all metrics are disabled -->
+            <TextBlock
+                VerticalAlignment="Center"
+                FontSize="12"
+                FontWeight="SemiBold"
+                Foreground="#CCFFFFFF"
+                Text="PulseGuard"
+                Visibility="{Binding ViewModel.ShowNoMetricsFallback, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+            <!-- Hover action buttons -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.HoverButtonsMargin}"
+                Cursor="Arrow">
+                <StackPanel.Style>
+                    <Style TargetType="StackPanel">
+                        <Setter Property="Visibility" Value="Collapsed" />
+                        <Style.Triggers>
+                            <MultiDataTrigger>
+                                <MultiDataTrigger.Conditions>
+                                    <Condition Binding="{Binding IsMouseOver, ElementName=RootPill}" Value="True" />
+                                    <Condition Binding="{Binding ViewModel.ShowHoverButtons}" Value="True" />
+                                </MultiDataTrigger.Conditions>
+                                <Setter Property="Visibility" Value="Visible" />
+                            </MultiDataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </StackPanel.Style>
+
+                <ui:Button
+                    Margin="0,0,4,0"
+                    Padding="5"
+                    Appearance="Transparent"
+                    Command="{Binding ViewModel.ToggleVpnCommand}"
+                    ToolTip="Вкл / Выкл VPN">
+                    <ui:Button.Style>
+                        <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                            <Setter Property="IsEnabled" Value="True" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ViewModel.IsVpnBusy}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ui:Button.Style>
+                    <ui:SymbolIcon FontSize="13" Foreground="#00B2FF" Symbol="Shield20" />
+                </ui:Button>
+
+                <ui:Button
+                    Margin="0,0,4,0"
+                    Padding="5"
+                    Appearance="Transparent"
+                    Command="{Binding ViewModel.QuickRamCleanCommand}"
+                    ToolTip="Быстрая очистка ОЗУ">
+                    <ui:Button.Style>
+                        <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                            <Setter Property="IsEnabled" Value="True" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding ViewModel.IsRamCleaning}" Value="True">
+                                    <Setter Property="IsEnabled" Value="False" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ui:Button.Style>
+                    <ui:SymbolIcon FontSize="13" Foreground="#00E5A0" Symbol="Broom16" />
+                </ui:Button>
+
+                <ui:Button
+                    Padding="5"
+                    Appearance="Transparent"
+                    Command="{Binding ViewModel.CloseOverlayCommand}"
+                    ToolTip="Закрыть виджет">
+                    <ui:SymbolIcon FontSize="13" Foreground="#CCFFFFFF" Symbol="Dismiss16" />
+                </ui:Button>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+</Window>

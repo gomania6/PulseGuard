@@ -1,0 +1,491 @@
+<Page x:Class="PulseGuard.Views.Pages.SettingsPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      mc:Ignorable="d"
+      d:DesignHeight="720"
+      d:DesignWidth="900"
+      Title="Настройки">
+
+    <ui:DynamicScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        PanningMode="VerticalOnly">
+        <StackPanel Margin="20,20,20,24">
+            <!-- Header -->
+            <TextBlock
+                Margin="0,0,0,16"
+                FontSize="22"
+                FontWeight="SemiBold"
+                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                Text="{Binding ViewModel.Title}" />
+
+            <!-- Block 1: Startup & Window Behavior -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="#00B2FF"
+                            Symbol="WindowSettings20" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Запуск и поведение окна" />
+                    </StackPanel>
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,4"
+                        Content="Запускать вместе с Windows"
+                        IsChecked="{Binding ViewModel.RunAtStartup, Mode=TwoWay}" />
+                    <TextBlock
+                        Margin="0,0,0,12"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Создаёт задачу в Планировщике заданий Windows с повышенными правами (без изменения реестра)."
+                        TextWrapping="Wrap" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,12"
+                        Content="Запускать свёрнутым в трей"
+                        IsChecked="{Binding ViewModel.StartMinimizedToTray, Mode=TwoWay}" />
+
+                    <ui:ToggleSwitch
+                        Content="Сворачивать в трей при закрытии (крестик)"
+                        IsChecked="{Binding ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}" />
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Block 2: Performance & Monitoring -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="#00E5A0"
+                            Symbol="Pulse24" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Производительность и мониторинг" />
+                    </StackPanel>
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Интервал обновления датчиков" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Применяется мгновенно без перезапуска программы." />
+                        </StackPanel>
+
+                        <ComboBox
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            DisplayMemberPath="DisplayText"
+                            ItemsSource="{Binding ViewModel.PollingIntervalOptions}"
+                            SelectedItem="{Binding ViewModel.SelectedPollingOption, Mode=TwoWay}" />
+                    </Grid>
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,4"
+                        Content="Пауза графиков при сворачивании"
+                        IsChecked="{Binding ViewModel.PauseChartsWhenMinimized, Mode=TwoWay}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Отключает отрисовку графиков и фоновый опрос датчиков, когда окно свёрнуто в трей."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Block 3: Thresholds & Peak Alerts -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="#FFA600"
+                            Symbol="Alert24" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Пороги уведомлений и лога пиков" />
+                    </StackPanel>
+
+                    <!-- CPU / GPU Temperature Threshold -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            FontSize="14"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Порог температуры CPU / GPU (60–100 °C)" />
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#FFA600"
+                            Text="{Binding ViewModel.CpuGpuTempThresholdC, StringFormat='{}{0:0} °C'}" />
+
+                        <Slider
+                            Grid.Row="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,6,0,0"
+                            IsSnapToTickEnabled="True"
+                            Maximum="100"
+                            Minimum="60"
+                            TickFrequency="1"
+                            Value="{Binding ViewModel.CpuGpuTempThresholdC, Mode=TwoWay}" />
+                    </Grid>
+
+                    <!-- RAM Threshold -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            FontSize="14"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Порог заполнения ОЗУ (70–98 %)" />
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#00B2FF"
+                            Text="{Binding ViewModel.RamThresholdPercent, StringFormat='{}{0:0} %'}" />
+
+                        <Slider
+                            Grid.Row="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,6,0,0"
+                            IsSnapToTickEnabled="True"
+                            Maximum="98"
+                            Minimum="70"
+                            TickFrequency="1"
+                            Value="{Binding ViewModel.RamThresholdPercent, Mode=TwoWay}" />
+                    </Grid>
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,4"
+                        Content="Показывать всплывающие уведомления Windows при превышении порогов"
+                        IsChecked="{Binding ViewModel.ShowThresholdNotifications, Mode=TwoWay}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Отправляет уведомление из иконки в системном трее не чаще одного раза в 2 минуты."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Block 4: Overlay Mini-Widget -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="#7C5CFF"
+                            Symbol="PictureInPicture24" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Компактный мини-виджет (оверлей)" />
+                    </StackPanel>
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,4"
+                        Content="Показывать мини-виджет поверх всех окон"
+                        IsChecked="{Binding ViewModel.IsOverlayEnabled, Mode=TwoWay}" />
+                    <TextBlock
+                        Margin="0,0,0,14"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Когда мини-виджет открыт, опрос датчиков продолжается даже при сворачивании главного окна в трей."
+                        TextWrapping="Wrap" />
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            FontSize="14"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Непрозрачность фона оверлея (40–95 %)" />
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#7C5CFF"
+                            Text="{Binding ViewModel.OverlayOpacityPercent, StringFormat='{}{0:0} %'}" />
+
+                        <Slider
+                            Grid.Row="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,6,0,0"
+                            IsSnapToTickEnabled="True"
+                            Maximum="95"
+                            Minimum="40"
+                            TickFrequency="1"
+                            Value="{Binding ViewModel.OverlayOpacityPercent, Mode=TwoWay}" />
+                    </Grid>
+
+                    <!-- Corner Position -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Расположение на экране" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Автоматически прижимает виджет к выбранному углу." />
+                        </StackPanel>
+
+                        <ComboBox
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            DisplayMemberPath="DisplayText"
+                            ItemsSource="{Binding ViewModel.OverlayCornerOptions}"
+                            SelectedItem="{Binding ViewModel.SelectedOverlayCorner, Mode=TwoWay}" />
+                    </Grid>
+
+                    <!-- Layout Mode -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Компоновка показателей" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="В одну горизонтальную линию или в столбик." />
+                        </StackPanel>
+
+                        <ComboBox
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            DisplayMemberPath="DisplayText"
+                            ItemsSource="{Binding ViewModel.OverlayLayoutOptions}"
+                            SelectedItem="{Binding ViewModel.SelectedOverlayLayout, Mode=TwoWay}" />
+                    </Grid>
+
+                    <!-- Lock Position -->
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,4"
+                        Content="Закрепить положение виджета (запретить перетаскивание)"
+                        IsChecked="{Binding ViewModel.OverlayLockPosition, Mode=TwoWay}" />
+                    <TextBlock
+                        Margin="0,0,0,14"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Защищает виджет от случайного смещения мышкой поверх игр и окон."
+                        TextWrapping="Wrap" />
+
+                    <!-- Visible Metrics -->
+                    <TextBlock
+                        Margin="0,0,0,8"
+                        FontSize="14"
+                        FontWeight="Medium"
+                        Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                        Text="Что показывать в виджете" />
+
+                    <UniformGrid Columns="2" Margin="0,0,0,14">
+                        <CheckBox
+                            Margin="0,0,0,8"
+                            Content="Загрузка CPU"
+                            IsChecked="{Binding ViewModel.OverlayShowCpu, Mode=TwoWay}" />
+                        <CheckBox
+                            Margin="0,0,0,8"
+                            Content="Загрузка GPU"
+                            IsChecked="{Binding ViewModel.OverlayShowGpu, Mode=TwoWay}" />
+                        <CheckBox
+                            Margin="0,0,0,8"
+                            Content="Использование ОЗУ"
+                            IsChecked="{Binding ViewModel.OverlayShowRam, Mode=TwoWay}" />
+                        <CheckBox
+                            Margin="0,0,0,8"
+                            Content="Скорость сети (↓ / ↑)"
+                            IsChecked="{Binding ViewModel.OverlayShowNetwork, Mode=TwoWay}" />
+                        <CheckBox
+                            Content="Статус VPN-туннеля"
+                            IsChecked="{Binding ViewModel.OverlayShowVpn, Mode=TwoWay}" />
+                    </UniformGrid>
+
+                    <!-- Extra Appearance Options -->
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,10"
+                        Content="Показывать температуру CPU и GPU (если доступна)"
+                        IsChecked="{Binding ViewModel.OverlayShowTemperature, Mode=TwoWay}" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,10"
+                        Content="Показывать иконки рядом с метриками"
+                        IsChecked="{Binding ViewModel.OverlayShowIcons, Mode=TwoWay}" />
+
+                    <ui:ToggleSwitch
+                        Content="Показывать кнопки «Очистка ОЗУ» и «Закрыть» при наведении"
+                        IsChecked="{Binding ViewModel.OverlayShowHoverButtons, Mode=TwoWay}" />
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Block 5: VPN Integration -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="#00B2FF"
+                            Symbol="Shield24" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Интеграция с VPN-клиентом" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontSize="14"
+                        FontWeight="Medium"
+                        Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                        Text="Путь к .exe файлу VPN-клиента" />
+
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <ui:TextBox
+                            Grid.Column="0"
+                            Margin="0,0,8,0"
+                            PlaceholderText="Например: C:\Program Files\MyVPN\vpn.exe"
+                            Text="{Binding ViewModel.VpnExecutablePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                        <ui:Button
+                            Grid.Column="1"
+                            Command="{Binding ViewModel.BrowseVpnExecutableCommand}"
+                            Content="Обзор..."
+                            Icon="{ui:SymbolIcon FolderOpen20}"
+                            Padding="12,8" />
+                    </Grid>
+
+                    <TextBlock
+                        Margin="0,0,0,14"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Выбранный процесс автоматически добавляется в защищённый список исключений (Игровой режим и очистка ОЗУ не будут его затрагивать)."
+                        TextWrapping="Wrap" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,10"
+                        Content="Запускать VPN при старте PulseGuard"
+                        IsChecked="{Binding ViewModel.VpnAutoStart, Mode=TwoWay}" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,4"
+                        Content="Запускать VPN свёрнутым в трей"
+                        IsChecked="{Binding ViewModel.VpnStartMinimized, Mode=TwoWay}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Передаёт аргументы --connect --minimized при запуске VPN-клиента."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Footer: Status + Reset -->
+            <DockPanel Margin="0,4,0,0">
+                <ui:Button
+                    DockPanel.Dock="Right"
+                    Command="{Binding ViewModel.ResetToDefaultsCommand}"
+                    Content="Сбросить настройки по умолчанию"
+                    Icon="{ui:SymbolIcon ArrowReset24}"
+                    Padding="14,8" />
+
+                <StackPanel VerticalAlignment="Center" Margin="0,0,16,0">
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                        Text="{Binding ViewModel.StatusMessage}" />
+                    <TextBlock
+                        Margin="0,2,0,0"
+                        FontSize="11"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{Binding ViewModel.SettingsFilePath, StringFormat='Файл настроек: {0}'}"
+                        TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </DockPanel>
+        </StackPanel>
+    </ui:DynamicScrollViewer>
+</Page>
