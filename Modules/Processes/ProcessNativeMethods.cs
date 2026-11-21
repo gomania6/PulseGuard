@@ -8,6 +8,7 @@ namespace PulseGuard.Modules.Processes;
 internal static class ProcessNativeMethods
 {
     internal const uint PROCESS_SET_QUOTA = 0x0100;
+    internal const uint PROCESS_SUSPEND_RESUME = 0x0800;
     internal const uint PROCESS_QUERY_INFORMATION = 0x0400;
     internal const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
 
@@ -36,5 +37,11 @@ internal static class ProcessNativeMethods
     [DllImport("psapi.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static extern bool EmptyWorkingSet(IntPtr hProcess);
+
+    [DllImport("ntdll.dll", SetLastError = false)]
+    internal static extern int NtSuspendProcess(IntPtr processHandle);
+
+    [DllImport("ntdll.dll", SetLastError = false)]
+    internal static extern int NtResumeProcess(IntPtr processHandle);
 }
 

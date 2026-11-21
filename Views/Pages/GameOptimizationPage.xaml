@@ -1,0 +1,678 @@
+<Page x:Class="PulseGuard.Views.Pages.GameOptimizationPage"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+      xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+      mc:Ignorable="d"
+      d:DesignHeight="800"
+      d:DesignWidth="900"
+      Title="Игровые оптимизации">
+
+    <ui:DynamicScrollViewer
+        VerticalScrollBarVisibility="Auto"
+        HorizontalScrollBarVisibility="Disabled"
+        PanningMode="VerticalOnly">
+        <StackPanel Margin="20,20,20,24">
+            <TextBlock
+                Margin="0,0,0,16"
+                FontSize="22"
+                FontWeight="SemiBold"
+                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                Text="{Binding ViewModel.Title}" />
+
+            <!-- Card 1: Anti-Cheat Protection & Full Rollback -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon
+                                Margin="0,0,10,0"
+                                FontSize="22"
+                                Foreground="#00E5A0"
+                                Symbol="ShieldCheckmark24" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="16"
+                                FontWeight="SemiBold"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Защита античитов и бэкап реестра" />
+                        </StackPanel>
+
+                        <TextBlock
+                            Margin="0,8,0,0"
+                            FontSize="13"
+                            FontWeight="Medium"
+                            Foreground="#00E5A0"
+                            Text="{Binding ViewModel.AntiCheatSummary}"
+                            TextWrapping="Wrap" />
+
+                        <TextBlock
+                            Margin="0,4,0,0"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.BackupStatusText}"
+                            TextWrapping="Wrap" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:Button
+                            Margin="0,0,8,0"
+                            Appearance="Secondary"
+                            Command="{Binding ViewModel.RefreshAntiCheatCommand}"
+                            Content="Проверить"
+                            Icon="{ui:SymbolIcon ArrowClockwise24}"
+                            Padding="12,10" />
+                        <ui:Button
+                            Appearance="Caution"
+                            Command="{Binding ViewModel.FullRollbackCommand}"
+                            Content="Вернуть как было (Полный откат)"
+                            Icon="{ui:SymbolIcon ArrowUndo24}"
+                            IsEnabled="{Binding ViewModel.CanRollback}"
+                            Padding="14,10" />
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+
+            <!-- Card 2: Optimization Profiles -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,12">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="22"
+                            Foreground="#A78BFA"
+                            Symbol="Flash24" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Профили оптимизации" />
+                    </StackPanel>
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="10" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Profile 1: Esports -->
+                        <Border Grid.Column="0" Padding="14" CornerRadius="10" BorderThickness="1.5">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#14FFFFFF" />
+                                    <Setter Property="BorderBrush" Value="#22FFFFFF" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewModel.IsEsportsProfileActive}" Value="True">
+                                            <Setter Property="Background" Value="#1A00E5A0" />
+                                            <Setter Property="BorderBrush" Value="#00E5A0" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#00E5A0" Text="Киберспорт (Anti-Cheat Ready)" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,2,0,6" FontSize="11" FontWeight="Medium" Foreground="#38BDF8" Text="Рекомендуемый по умолчанию" />
+                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Макс. производительность + CPMINCORES 100, IFEO (CpuPriorityClass=3), Game Mode, GameDVR Off, MMCSS Games, SwapEffectUpgradeEnable (Win11), Standby List и заморозка WhiteList." TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Primary" Command="{Binding ViewModel.ApplyEsportsProfileCommand}" Content="Применить" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Profile 2: Max FPS -->
+                        <Border Grid.Column="2" Padding="14" CornerRadius="10" BorderThickness="1.5">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#14FFFFFF" />
+                                    <Setter Property="BorderBrush" Value="#22FFFFFF" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewModel.IsMaxFpsProfileActive}" Value="True">
+                                            <Setter Property="Background" Value="#1AA78BFA" />
+                                            <Setter Property="BorderBrush" Value="#A78BFA" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#A78BFA" Text="Максимальный FPS (Single-Player)" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,2,0,6" FontSize="11" Foreground="#FFB900" Text="Расширенный тюнинг ОС и сети" />
+                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Всё из «Киберспорт» + отключение прозрачности/анимаций окон, фоновых UWP, алгоритма Нейгла (TcpAckFrequency/TCPNoDelay) и NetworkThrottlingIndex." TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Secondary" Command="{Binding ViewModel.ApplyMaxFpsProfileCommand}" Content="Применить" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
+                            </Grid>
+                        </Border>
+
+                        <!-- Profile 3: Normal Reset -->
+                        <Border Grid.Column="4" Padding="14" CornerRadius="10" BorderThickness="1.5">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="#14FFFFFF" />
+                                    <Setter Property="BorderBrush" Value="#22FFFFFF" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewModel.IsNormalProfileActive}" Value="True">
+                                            <Setter Property="Background" Value="#1A38BDF8" />
+                                            <Setter Property="BorderBrush" Value="#38BDF8" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel Grid.Row="0">
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#38BDF8" Text="Обычный режим (Сброс)" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,2,0,6" FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Заводские параметры Windows" />
+                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Безопасный возврат всех ключей реестра из registry_backup.json, восстановление схемы питания «Сбалансированная», запуск служб и разморозка процессов." TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Secondary" Command="{Binding ViewModel.ApplyNormalResetProfileCommand}" Content="Сбросить" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
+                            </Grid>
+                        </Border>
+                    </Grid>
+
+                    <StackPanel Margin="0,4,0,10">
+                        <CheckBox
+                            Margin="0,0,0,6"
+                            Content="Останавливать SysMain и WSearch в профиле «Максимальный FPS» (предупреждение: замедлит поиск Windows до сброса/перезагрузки)"
+                            IsChecked="{Binding ViewModel.StopSysMainAndWSearchInMaxFps, Mode=TwoWay}" />
+                        <CheckBox
+                            Content="Отключить HVCI (Memory Integrity) в профиле «Максимальный FPS» (требуется перезагрузка)"
+                            IsChecked="{Binding ViewModel.DisableHvciInMaxFps, Mode=TwoWay}"
+                            IsEnabled="{Binding ViewModel.IsHvciOptionEnabled}"
+                            ToolTip="{Binding ViewModel.HvciOptionTooltip}"
+                            ToolTipService.ShowOnDisabled="True" />
+                    </StackPanel>
+
+                    <Border Height="1" Margin="0,4,0,10" Background="#1FFFFFFF" />
+
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontSize="12"
+                        FontWeight="Medium"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="WhiteList заморозки фоновых программ во время игры (NtSuspendProcess с авто-разморозкой):" />
+
+                    <ItemsControl ItemsSource="{Binding ViewModel.WhitelistSuspendApps}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox
+                                    Margin="0,0,14,4"
+                                    Content="{Binding ExecutableName}"
+                                    IsChecked="{Binding IsSelected, Mode=TwoWay}" />
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <TextBlock
+                        Margin="0,8,0,0"
+                        FontSize="12"
+                        FontWeight="Medium"
+                        Foreground="#FFB900"
+                        Text="{Binding ViewModel.ProfileActionStatus}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Card 3: Game Mode -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <ui:SymbolIcon
+                                    Margin="0,0,10,0"
+                                    FontSize="22"
+                                    Foreground="#FFB900"
+                                    Symbol="Games24" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                    Text="Игровой режим (Game Mode)" />
+                            </StackPanel>
+
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                FontSize="13"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Переключает схему питания на максимальную производительность, устанавливает таймер 0.5 мс, очищает Standby List и ОЗУ, приостанавливает выбранные по WhiteList фоновые приложения и не затрагивает игры, античиты, Steam или VPN. При выключении всё полностью восстанавливается."
+                                TextWrapping="Wrap" />
+
+                            <TextBlock
+                                Margin="0,8,0,0"
+                                FontSize="12"
+                                FontWeight="Medium"
+                                Foreground="#FFB900"
+                                Text="{Binding ViewModel.GameModeStatus}"
+                                TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <ui:ToggleSwitch
+                            Grid.Column="1"
+                            VerticalAlignment="Top"
+                            IsChecked="{Binding ViewModel.IsGameModeEnabled, Mode=TwoWay}"
+                            IsEnabled="{Binding ViewModel.CanToggleGameMode}" />
+                    </Grid>
+
+                    <Border Height="1" Margin="0,14,0,12" Background="#1FFFFFFF" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,8"
+                        Content="Автоматический Игровой режим (при запуске игр)"
+                        IsChecked="{Binding ViewModel.IsAutoGameModeEnabled, Mode=TwoWay}" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,12"
+                        Content="Определять полноэкранные приложения (кроме проводника, браузеров и плееров)"
+                        IsChecked="{Binding ViewModel.DetectFullscreenApps, Mode=TwoWay}" />
+
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontSize="12"
+                        FontWeight="Medium"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Список процессов игр и лаунчеров (.exe) (также используется для IFEO в профилях):" />
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:TextBox
+                            Grid.Column="0"
+                            Margin="0,0,8,0"
+                            PlaceholderText="Например: stalker2.exe"
+                            Text="{Binding ViewModel.NewGameProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                        <ui:Button
+                            Grid.Column="1"
+                            Appearance="Secondary"
+                            Command="{Binding ViewModel.AddGameProcessCommand}"
+                            Content="Добавить"
+                            Icon="{ui:SymbolIcon Add16}" />
+                    </Grid>
+
+                    <ItemsControl ItemsSource="{Binding ViewModel.GameProcessNames}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,6,6" Padding="8,3" Background="#1AFFFFFF" CornerRadius="6">
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock VerticalAlignment="Center" FontSize="11" Text="{Binding}" />
+                                        <ui:Button
+                                            Margin="6,0,0,0"
+                                            Padding="2,0"
+                                            Appearance="Transparent"
+                                            Command="{Binding DataContext.ViewModel.RemoveGameProcessCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                            CommandParameter="{Binding}"
+                                            Content="×"
+                                            FontSize="12"
+                                            ToolTip="Удалить из списка" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Card 4: Playtime Tracker -->
+            <ui:Card Padding="20">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,12">
+                        <TextBlock
+                            DockPanel.Dock="Right"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            FontWeight="Medium"
+                            Foreground="#00E5A0"
+                            Text="{Binding ViewModel.ContinuousSessionText}" />
+
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon Margin="0,0,10,0" FontSize="22" Foreground="#38BDF8" Symbol="Timer24" />
+                            <TextBlock VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="Игровое время" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Пока нет записанных игровых сессий. Запустите игру из списка Игрового режима или в полноэкранном режиме.">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Visibility" Value="Visible" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding ViewModel.HasPlaytimeGames}" Value="True">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ItemsControl ItemsSource="{Binding ViewModel.PlaytimeGames}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,6" Padding="12,8" Background="#14FFFFFF" CornerRadius="8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock FontSize="13" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="{Binding ProcessName}" />
+                                            <TextBlock Margin="0,2,0,0" FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{Binding LastPlayedText}" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Margin="0,0,14,0" FontSize="12" Foreground="#38BDF8" Text="{Binding TodayText}" />
+                                            <TextBlock Margin="0,0,14,0" FontSize="12" Foreground="#A78BFA" Text="{Binding WeekText}" />
+                                            <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="White" Text="{Binding TotalText}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Height="1" Margin="0,12,0,14" Background="#1FFFFFFF" />
+
+                    <!-- Daily Summary + Interactive Activity Calendar -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="320" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Left: Daily Summary (Today / Yesterday / Last 7 Days) -->
+                        <StackPanel Grid.Column="0">
+                            <DockPanel Margin="0,0,0,10">
+                                <TextBlock
+                                    DockPanel.Dock="Right"
+                                    VerticalAlignment="Center"
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="#38BDF8"
+                                    Text="{Binding ViewModel.DailySummaryTotalText}" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="14"
+                                    FontWeight="SemiBold"
+                                    Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                    Text="Сводка по дням" />
+                            </DockPanel>
+
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                <ui:Button
+                                    Margin="0,0,6,0"
+                                    Padding="10,5"
+                                    Command="{Binding ViewModel.SelectSummaryTodayCommand}"
+                                    Content="Сегодня">
+                                    <ui:Button.Style>
+                                        <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                            <Setter Property="Appearance" Value="Secondary" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ViewModel.IsSummaryToday}" Value="True">
+                                                    <Setter Property="Appearance" Value="Primary" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ui:Button.Style>
+                                </ui:Button>
+
+                                <ui:Button
+                                    Margin="0,0,6,0"
+                                    Padding="10,5"
+                                    Command="{Binding ViewModel.SelectSummaryYesterdayCommand}"
+                                    Content="Вчера">
+                                    <ui:Button.Style>
+                                        <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                            <Setter Property="Appearance" Value="Secondary" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ViewModel.IsSummaryYesterday}" Value="True">
+                                                    <Setter Property="Appearance" Value="Primary" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ui:Button.Style>
+                                </ui:Button>
+
+                                <ui:Button
+                                    Padding="10,5"
+                                    Command="{Binding ViewModel.SelectSummaryLast7DaysCommand}"
+                                    Content="За 7 дней">
+                                    <ui:Button.Style>
+                                        <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                            <Setter Property="Appearance" Value="Secondary" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding ViewModel.IsSummaryLast7Days}" Value="True">
+                                                    <Setter Property="Appearance" Value="Primary" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </ui:Button.Style>
+                                </ui:Button>
+                            </StackPanel>
+
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="За выбранный период игровых сессий не зафиксировано.">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Visibility" Value="Visible" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding ViewModel.HasDailySummaryGames}" Value="True">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+
+                            <ItemsControl ItemsSource="{Binding ViewModel.DailySummaryGames}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,5" Padding="10,7" Background="#10FFFFFF" CornerRadius="7">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12" FontWeight="SemiBold" Foreground="#00E5A0" Text="{Binding DurationText}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <!-- Right: Interactive Monthly Heatmap Calendar -->
+                        <Border
+                            Grid.Column="2"
+                            Padding="12"
+                            Background="#0CFFFFFF"
+                            BorderBrush="#1AFFFFFF"
+                            BorderThickness="1"
+                            CornerRadius="10"
+                            VerticalAlignment="Top">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <ui:Button
+                                        Grid.Column="0"
+                                        Width="30"
+                                        Height="28"
+                                        Padding="0"
+                                        Appearance="Secondary"
+                                        Command="{Binding ViewModel.PreviousCalendarMonthCommand}"
+                                        Content="&lt;"
+                                        ToolTip="Предыдущий месяц" />
+
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        HorizontalAlignment="Center"
+                                        VerticalAlignment="Center"
+                                        FontSize="13.5"
+                                        FontWeight="SemiBold"
+                                        Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                        Text="{Binding ViewModel.CalendarMonthTitle}" />
+
+                                    <ui:Button
+                                        Grid.Column="2"
+                                        Width="30"
+                                        Height="28"
+                                        Padding="0"
+                                        Appearance="Secondary"
+                                        Command="{Binding ViewModel.NextCalendarMonthCommand}"
+                                        Content="&gt;"
+                                        ToolTip="Следующий месяц" />
+                                </Grid>
+
+                                <UniformGrid Columns="7" Margin="0,0,0,6">
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Пн" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Вт" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Ср" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Чт" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Пт" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Сб" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Вс" />
+                                </UniformGrid>
+
+                                <ItemsControl Height="228" ItemsSource="{Binding ViewModel.CalendarDays}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <UniformGrid Columns="7" Rows="6" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button
+                                                Margin="2.5"
+                                                Padding="0"
+                                                HorizontalAlignment="Stretch"
+                                                VerticalAlignment="Stretch"
+                                                Command="{Binding DataContext.ViewModel.SelectCalendarDayCommand, RelativeSource={RelativeSource AncestorType=Page}}"
+                                                CommandParameter="{Binding}"
+                                                Cursor="Hand"
+                                                IsEnabled="{Binding IsInteractive}"
+                                                ToolTip="{Binding TooltipText}">
+                                                <Button.Template>
+                                                    <ControlTemplate TargetType="Button">
+                                                        <Border
+                                                            x:Name="DayTile"
+                                                            Background="{Binding BackgroundBrush}"
+                                                            BorderBrush="{Binding BorderBrush}"
+                                                            BorderThickness="1.2"
+                                                            CornerRadius="7">
+                                                            <Grid>
+                                                                <TextBlock
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center"
+                                                                    FontSize="12"
+                                                                    FontWeight="SemiBold"
+                                                                    Foreground="White"
+                                                                    Text="{Binding DayNumberText}" />
+                                                                <Ellipse
+                                                                    Width="4"
+                                                                    Height="4"
+                                                                    Margin="0,0,0,3"
+                                                                    HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Bottom"
+                                                                    Fill="#00E5A0"
+                                                                    Visibility="{Binding HasActivity, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                                            </Grid>
+                                                        </Border>
+                                                        <ControlTemplate.Triggers>
+                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                <Setter TargetName="DayTile" Property="Opacity" Value="0.85" />
+                                                            </Trigger>
+                                                            <Trigger Property="IsEnabled" Value="False">
+                                                                <Setter TargetName="DayTile" Property="Opacity" Value="0" />
+                                                            </Trigger>
+                                                        </ControlTemplate.Triggers>
+                                                    </ControlTemplate>
+                                                </Button.Template>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <!-- Selected Day Details -->
+                                <Border Margin="0,10,0,0" Padding="10,8" Background="#14FFFFFF" CornerRadius="8">
+                                    <StackPanel>
+                                        <TextBlock
+                                            Margin="0,0,0,4"
+                                            FontSize="12"
+                                            FontWeight="SemiBold"
+                                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                            Text="{Binding ViewModel.SelectedCalendarDateTitle}"
+                                            TextWrapping="Wrap" />
+
+                                        <ItemsControl ItemsSource="{Binding ViewModel.SelectedCalendarGames}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Grid Margin="0,2,0,2">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <TextBlock Grid.Column="0" FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Grid.Column="1" FontSize="11.5" FontWeight="SemiBold" Foreground="#00E5A0" Text="{Binding DurationText}" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </StackPanel>
+            </ui:Card>
+        </StackPanel>
+    </ui:DynamicScrollViewer>
+</Page>
+

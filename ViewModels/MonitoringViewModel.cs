@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -6,9 +7,16 @@ using CommunityToolkit.Mvvm.Input;
 using LiveChartsCore;
 using LiveChartsCore.SkiaSharpView;
 using LiveChartsCore.SkiaSharpView.Painting;
+using PulseGuard.Modules.BatteryDevices;
+using PulseGuard.Modules.BatteryDevices.Models;
 using PulseGuard.Modules.Monitoring;
 using PulseGuard.Modules.Monitoring.Models;
+using PulseGuard.Modules.Network;
+using PulseGuard.Modules.Network.Models;
+using PulseGuard.Modules.Optimization;
+using PulseGuard.Modules.Processes;
 using PulseGuard.Modules.Settings;
+using PulseGuard.Modules.Settings.Models;
 using PulseGuard.Modules.Vpn;
 using PulseGuard.Modules.Vpn.Models;
 using PulseGuard.Services;
@@ -20,10 +28,16 @@ public partial class MonitoringViewModel : ObservableObject
 {
     private const int HistoryLength = 60;
     private static readonly TimeSpan AlertCooldown = TimeSpan.FromMinutes(1);
+    private static readonly TimeSpan PacketLossAlertCooldown = TimeSpan.FromMinutes(3);
 
     private readonly SettingsService _settingsService;
     private readonly TrayNotificationService _trayNotificationService;
     private readonly VpnService _vpnService;
+    private readonly BatteryDeviceMonitorModule _batteryModule;
+    private readonly NetworkRadarModule _networkRadarModule;
+    private readonly ProcessMonitorModule _processMonitorModule;
+    private readonly StutterMonitorModule _stutterMonitorModule;
+    private readonly HashSet<string> _notifiedLowBatteryDeviceIds = new(StringComparer.OrdinalIgnoreCase);
     private readonly ObservableCollection<double> _cpuHistory = new();
     private readonly ObservableCollection<double> _gpuHistory = new();
     private readonly ObservableCollection<double> _downloadHistory = new();
@@ -32,6 +46,7 @@ public partial class MonitoringViewModel : ObservableObject
     private DateTime _lastCpuTempAlert = DateTime.MinValue;
     private DateTime _lastGpuTempAlert = DateTime.MinValue;
     private DateTime _lastRamAlert = DateTime.MinValue;
+    private DateTime _lastPacketLossAlert = DateTime.MinValue;
 
     [ObservableProperty]
     private string _title = "Мониторинг";
@@ -91,6 +106,15 @@ public partial class MonitoringViewModel : ObservableObject
     private string _networkUploadText = "0.00 Мбит/с";
 
     [ObservableProperty]
+    private string _networkPacketLossText = "0%";
+
+    [ObservableProperty]
+    private string _networkJitterText = "0.0 мс";
+
+    [ObservableProperty]
+    private Brush _networkQualityBrush = Brushes.LightGreen;
+
+    [ObservableProperty]
     private string _vpnStatusText = "Выключен";
 
     [ObservableProperty]
@@ -113,6 +137,33 @@ public partial class MonitoringViewModel : ObservableObject
 
     [ObservableProperty]
     private string _vpnActionMessage = string.Empty;
+
+    [ObservableProperty]
+    private bool _isBatteryRefreshing;
+
+    [ObservableProperty]
+    private bool _hasNoBatteryDevices = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(HasNoTopNetworkProcesses))]
+    private bool _hasTopNetworkProcesses;
+
+    [ObservableProperty]
+    private string _stutterCountText = "0 фризов";
+
+    [ObservableProperty]
+    private string _stutterMaxDelayText = "Макс. задержка: 0 мс";
+
+    [ObservableProperty]
+    private string _stutterDetailsText = "DPC: 0.0% • Очередь CPU: 0";
+
+    [ObservableProperty]
+    private Brush _stutterStabilityBrush = CreateFrozenBrush(0x00, 0xE5, 0xA0);
+
+    public bool HasNoTopNetworkProcesses => !HasTopNetworkProcesses;
+
+    public ObservableCollection<BatteryDeviceItemViewModel> BatteryDevices { get; } = new();
+    public ObservableCollection<NetworkConsumerItemViewModel> TopNetworkProcesses { get; } = new();
 
     public ObservableCollection<string> AlertLogs { get; } = new();
 
@@ -162,11 +213,24 @@ public partial class MonitoringViewModel : ObservableObject
         MonitoringPollingService pollingService,
         SettingsService settingsService,
         TrayNotificationService trayNotificationService,
-        VpnService vpnService)
+        VpnService vpnService,
+        BatteryDeviceMonitorModule batteryModule,
+        NetworkRadarModule networkRadarModule,
+        ProcessMonitorModule processMonitorModule,
+        StutterMonitorModule stutterMonitorModule,
+        GameModeTool gameModeTool,
+        RamAutoCleanSchedulerModule ramAutoCleanScheduler)
     {
         _settingsService = settingsService;
         _trayNotificationService = trayNotificationService;
         _vpnService = vpnService;
+        _batteryModule = batteryModule;
+        _networkRadarModule = networkRadarModule;
+        _processMonitorModule = processMonitorModule;
+        _stutterMonitorModule = stutterMonitorModule;
+        _gameModeTool = gameModeTool;
+        ramAutoCleanScheduler.AutoCleanCompleted += msg =>
+            Application.Current?.Dispatcher.BeginInvoke(() => AddAlert(msg));
         for (int i = 0; i < HistoryLength; i++)
         {
             _cpuHistory.Add(0);
@@ -221,7 +285,74 @@ public partial class MonitoringViewModel : ObservableObject
 
         pollingService.MetricsUpdated += OnMetricsUpdated;
         _vpnService.StatusChanged += OnVpnStatusChanged;
+        _batteryModule.DevicesUpdated += OnBatteryDevicesUpdated;
+        _networkRadarModule.RadarUpdated += OnNetworkRadarUpdated;
+        _stutterMonitorModule.SnapshotUpdated += OnStutterSnapshotUpdated;
+        _stutterMonitorModule.StutterDetected += OnStutterDetected;
         ApplyVpnStatus(_vpnService.CurrentStatus);
+        ApplyBatteryDevices(_batteryModule.LatestDevices);
+        ApplyNetworkRadar(_networkRadarModule.LatestSnapshot);
+        ApplyStutterSnapshot(_stutterMonitorModule.LatestSnapshot);
+    }
+
+    private void OnStutterSnapshotUpdated(StutterSnapshot snapshot)
+    {
+        Application.Current?.Dispatcher.BeginInvoke(() => ApplyStutterSnapshot(snapshot));
+    }
+
+    private void OnStutterDetected(StutterEvent ev, StutterSnapshot snapshot)
+    {
+        Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            ApplyStutterSnapshot(snapshot);
+            var localTime = ev.TimestampUtc.ToLocalTime();
+            string culpritPart = string.IsNullOrWhiteSpace(ev.CulpritProcess)
+                ? string.Empty
+                : $" — всплеск активности: {ev.CulpritProcess}";
+            AddAlert($"[{localTime:HH:mm:ss}] Микрофриз (задержка {ev.DelayMs:0} мс){culpritPart}");
+        });
+    }
+
+    private void ApplyStutterSnapshot(StutterSnapshot snapshot)
+    {
+        StutterCountText = snapshot.StutterCount switch
+        {
+            0 => "Стабильно (0 фризов)",
+            1 => "1 фриз за сессию",
+            >= 2 and <= 4 => $"{snapshot.StutterCount} фриза за сессию",
+            _ => $"{snapshot.StutterCount} фризов за сессию"
+        };
+
+        StutterMaxDelayText = $"Макс. задержка: {snapshot.MaxDelayMs:0} мс";
+        StutterDetailsText = $"DPC: {snapshot.DpcPercent:0.0}% • Очередь CPU: {snapshot.ProcessorQueueLength}";
+
+        StutterStabilityBrush = snapshot.StutterCount == 0
+            ? CreateFrozenBrush(0x00, 0xE5, 0xA0)
+            : (snapshot.StutterCount >= 5 || snapshot.MaxDelayMs >= 120)
+                ? CreateFrozenBrush(0xFF, 0x5C, 0x5C)
+                : CreateFrozenBrush(0xFF, 0xB9, 0x00);
+    }
+
+    private void OnNetworkRadarUpdated(NetworkRadarSnapshot snapshot)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            return;
+        }
+
+        dispatcher.BeginInvoke(() => ApplyNetworkRadar(snapshot));
+    }
+
+    private void ApplyNetworkRadar(NetworkRadarSnapshot snapshot)
+    {
+        TopNetworkProcesses.Clear();
+        foreach (var item in snapshot.TopProcesses)
+        {
+            TopNetworkProcesses.Add(new NetworkConsumerItemViewModel(item, _processMonitorModule));
+        }
+
+        HasTopNetworkProcesses = TopNetworkProcesses.Count > 0;
     }
 
     private void OnVpnStatusChanged(VpnStatusSnapshot status)
@@ -252,8 +383,51 @@ public partial class MonitoringViewModel : ObservableObject
                 : $"{status.CountryCode} · {status.ServerName}";
 
         VpnIpText = status.ExternalIp;
-        VpnPingText = status.PingMs.HasValue ? $"{status.PingMs.Value} мс" : "—";
-        VpnToggleButtonText = status.IsProcessRunning ? "Отключить" : "Подключить";
+        VpnPingText = status.State == VpnConnectionState.Connected && status.PingMs.HasValue
+            ? $"{status.PingMs.Value} мс"
+            : "—";
+        VpnToggleButtonText = status.State != VpnConnectionState.Disconnected
+            ? "Отключить"
+            : "Подключить";
+
+        NetworkPacketLossText = $"{status.PacketLossPercent:0}%";
+        NetworkJitterText = $"{status.JitterMs:0.0} мс";
+        NetworkQualityBrush = status.Quality switch
+        {
+            ConnectionQuality.Bad => CreateFrozenBrush(0xFF, 0x5C, 0x5C),
+            ConnectionQuality.Warning => CreateFrozenBrush(0xFF, 0xB9, 0x00),
+            _ => CreateFrozenBrush(0x00, 0xE5, 0xA0)
+        };
+
+        EvaluatePacketLossAlert(status);
+    }
+
+    private void EvaluatePacketLossAlert(VpnStatusSnapshot status)
+    {
+        var settings = _settingsService.Current;
+        if (status.PacketLossPercent <= settings.PacketLossAlertThreshold || status.PacketLossPercent >= 100)
+        {
+            return;
+        }
+
+        var now = DateTime.Now;
+        if ((now - _lastPacketLossAlert) < PacketLossAlertCooldown)
+        {
+            return;
+        }
+
+        _lastPacketLossAlert = now;
+        string channelText = status.State == VpnConnectionState.Connected
+            ? $"через VPN ({(status.ServerName != "—" ? status.ServerName : status.CountryCode)})"
+            : "(канал интернета)";
+
+        string message = $"Потеря пакетов {status.PacketLossPercent:0}% {channelText} — возможны лаги";
+        AddAlert($"[{now:HH:mm:ss}] {message}");
+
+        if (ShouldShowNotificationBalloon(settings))
+        {
+            _trayNotificationService.TryShowWarningBalloon("PulseGuard — Потеря пакетов", message);
+        }
     }
 
     private static Brush CreateFrozenBrush(byte r, byte g, byte b)
@@ -322,14 +496,21 @@ public partial class MonitoringViewModel : ObservableObject
         if (s.CpuTemperatureC.HasValue)
         {
             CpuTempText = $"{s.CpuTemperatureC.Value:0} °C";
-            CpuTempTooltip = null;
+            CpuTempTooltip = string.IsNullOrWhiteSpace(s.CpuDiagnosticError) ? null : s.CpuDiagnosticError;
             IsCpuTempBlocked = false;
         }
         else
         {
-            CpuTempText = "Н/Д (блок драйвера)";
-            CpuTempTooltip = "Драйвер датчиков (WinRing0) заблокирован функцией «Целостность памяти» (Memory Integrity) в Windows 11.";
-            IsCpuTempBlocked = true;
+            string reason = !string.IsNullOrWhiteSpace(s.CpuTemperatureUnavailableReason)
+                ? s.CpuTemperatureUnavailableReason
+                : "Датчик не найден";
+
+            CpuTempText = reason == "Отключено в настройках"
+                ? "Н/Д (откл.)"
+                : "Н/Д";
+            CpuTempTooltip = reason;
+            IsCpuTempBlocked = reason.Contains("HVCI", StringComparison.OrdinalIgnoreCase)
+                               || reason.Contains("Defender", StringComparison.OrdinalIgnoreCase);
         }
 
         CpuClockText = s.CpuClockMhz.HasValue
@@ -337,9 +518,11 @@ public partial class MonitoringViewModel : ObservableObject
                 ? $"{s.CpuClockMhz.Value:0} МГц (базовая)"
                 : $"{s.CpuClockMhz.Value:0} МГц"
             : "— МГц";
-        CpuCardTooltip = string.IsNullOrWhiteSpace(s.CpuDiagnosticError)
-            ? null
-            : $"Диагностика CPU: {s.CpuDiagnosticError}";
+        CpuCardTooltip = !string.IsNullOrWhiteSpace(s.CpuTemperatureUnavailableReason)
+            ? $"Температура CPU недоступна: {s.CpuTemperatureUnavailableReason}"
+            : string.IsNullOrWhiteSpace(s.CpuDiagnosticError)
+                ? null
+                : s.CpuDiagnosticError;
 
         GpuName = s.GpuName;
         GpuLoadPercent = Math.Clamp(s.GpuLoadPercent ?? 0, 0, 100);
@@ -394,7 +577,7 @@ public partial class MonitoringViewModel : ObservableObject
         var settings = _settingsService.Current;
         double tempThreshold = settings.CpuGpuTempThresholdC;
         double ramThreshold = settings.RamThresholdPercent;
-        bool showBalloon = settings.ShowThresholdNotifications;
+        bool showBalloon = ShouldShowNotificationBalloon(settings);
 
         if (s.CpuTemperatureC is double cpuTemp && cpuTemp > tempThreshold && (now - _lastCpuTempAlert) >= AlertCooldown)
         {
@@ -433,6 +616,23 @@ public partial class MonitoringViewModel : ObservableObject
         }
     }
 
+    private readonly GameModeTool _gameModeTool;
+
+    private bool ShouldShowNotificationBalloon(AppSettings settings)
+    {
+        if (!settings.ShowThresholdNotifications)
+        {
+            return false;
+        }
+
+        return settings.NotificationProfile switch
+        {
+            NotificationProfile.Silent => false,
+            NotificationProfile.GamingFocus => !_gameModeTool.IsActive,
+            _ => true
+        };
+    }
+
     private void AddAlert(string message)
     {
         AlertLogs.Insert(0, message);
@@ -446,6 +646,104 @@ public partial class MonitoringViewModel : ObservableObject
     private void ClearAlerts()
     {
         AlertLogs.Clear();
+    }
+
+    [RelayCommand]
+    private async Task RefreshBatteryDevicesAsync()
+    {
+        if (IsBatteryRefreshing)
+        {
+            return;
+        }
+
+        IsBatteryRefreshing = true;
+        try
+        {
+            await _batteryModule.RefreshAsync(forceHidScan: true);
+        }
+        finally
+        {
+            IsBatteryRefreshing = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ExportHidDiagnosticsAsync()
+    {
+        try
+        {
+            string filePath = await _batteryModule.ExportHidDiagnosticsAsync();
+            AddAlert($"[{DateTime.Now:HH:mm:ss}] Список USB HID-устройств сохранён: {filePath}");
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(filePath) { UseShellExecute = true });
+            }
+            catch
+            {
+                _trayNotificationService.TryShowWarningBalloon(
+                    "PulseGuard — Диагностика HID",
+                    $"Список HID-устройств сохранён в {filePath}");
+            }
+        }
+        catch
+        {
+            // Ignore export errors if AppData is unavailable.
+        }
+    }
+
+    private void OnBatteryDevicesUpdated(IReadOnlyList<BatteryDeviceInfo> devices)
+    {
+        var dispatcher = Application.Current?.Dispatcher;
+        if (dispatcher is null)
+        {
+            return;
+        }
+
+        dispatcher.BeginInvoke(() => ApplyBatteryDevices(devices));
+    }
+
+    private void ApplyBatteryDevices(IReadOnlyList<BatteryDeviceInfo> devices)
+    {
+        var pinnedIds = _settingsService.Current.PinnedOverlayDeviceIds;
+
+        BatteryDevices.Clear();
+        foreach (var device in devices)
+        {
+            bool isPinned = pinnedIds.Contains(device.DeviceId, StringComparer.OrdinalIgnoreCase);
+            BatteryDevices.Add(new BatteryDeviceItemViewModel(device, isPinned, OnDeviceOverlayPinChanged));
+
+            if (isPinned
+                && device.IsConnected
+                && device.BatteryPercent < 15
+                && _notifiedLowBatteryDeviceIds.Add(device.DeviceId))
+            {
+                AddAlert($"[{DateTime.Now:HH:mm:ss}] Низкий заряд устройства «{device.Name}»: {device.BatteryPercent}% (< 15%)");
+                _trayNotificationService.TryShowWarningBalloon(
+                    "PulseGuard — Низкий заряд устройства",
+                    $"{device.Name}: осталось {device.BatteryPercent}% заряда.");
+            }
+        }
+
+        HasNoBatteryDevices = BatteryDevices.Count == 0;
+    }
+
+    private void OnDeviceOverlayPinChanged(string deviceId, bool isPinned)
+    {
+        _settingsService.Update(settings =>
+        {
+            if (isPinned)
+            {
+                if (!settings.PinnedOverlayDeviceIds.Contains(deviceId, StringComparer.OrdinalIgnoreCase))
+                {
+                    settings.PinnedOverlayDeviceIds.Add(deviceId);
+                }
+            }
+            else
+            {
+                settings.PinnedOverlayDeviceIds.RemoveAll(id => string.Equals(id, deviceId, StringComparison.OrdinalIgnoreCase));
+            }
+        });
     }
 
     [RelayCommand]
@@ -463,5 +761,124 @@ public partial class MonitoringViewModel : ObservableObject
         };
 
         await box.ShowDialogAsync();
+    }
+}
+
+public sealed partial class BatteryDeviceItemViewModel : ObservableObject
+{
+    private readonly Action<string, bool> _onPinChanged;
+    private bool _suppressPinCallback;
+
+    public string DeviceId { get; }
+    public string Name { get; }
+    public int BatteryPercent { get; }
+    public string BatteryPercentText { get; }
+    public bool IsConnected { get; }
+    public string StatusText { get; }
+    public double ItemOpacity { get; }
+    public Wpf.Ui.Controls.SymbolRegular DeviceIcon { get; }
+    public Brush AccentBrush { get; }
+
+    [ObservableProperty]
+    private bool _isPinnedToOverlay;
+
+    public BatteryDeviceItemViewModel(
+        BatteryDeviceInfo info,
+        bool isPinned,
+        Action<string, bool> onPinChanged)
+    {
+        _onPinChanged = onPinChanged;
+        DeviceId = info.DeviceId;
+        Name = info.Name;
+        BatteryPercent = info.BatteryPercent;
+        BatteryPercentText = $"{info.BatteryPercent}%";
+        IsConnected = info.IsConnected;
+        StatusText = !info.IsConnected
+            ? "Не в сети"
+            : info.IsSleeping
+                ? "Спит (последний известный заряд)"
+                : "Активна";
+        ItemOpacity = !info.IsConnected
+            ? 0.55
+            : info.IsSleeping
+                ? 0.78
+                : 1.0;
+        DeviceIcon = BatteryDevicePresentation.GetIcon(info.DeviceType);
+        AccentBrush = BatteryDevicePresentation.GetCardBrush(info.BatteryPercent, info.IsConnected);
+
+        _suppressPinCallback = true;
+        _isPinnedToOverlay = isPinned;
+        _suppressPinCallback = false;
+    }
+
+    partial void OnIsPinnedToOverlayChanged(bool value)
+    {
+        if (!_suppressPinCallback)
+        {
+            _onPinChanged(DeviceId, value);
+        }
+    }
+}
+
+public sealed partial class NetworkConsumerItemViewModel : ObservableObject
+{
+    private readonly ProcessMonitorModule _processMonitorModule;
+    private readonly IReadOnlyList<int> _pids;
+    private readonly bool _isSuspended;
+
+    public string ProcessName { get; }
+    public string DownloadText { get; }
+    public string UploadText { get; }
+    public string TooltipText { get; }
+    public ImageSource? Icon { get; }
+    public bool HasIcon => Icon is not null;
+    public bool HasNoIcon => Icon is null;
+    public bool IsProtected { get; }
+    public bool IsSuspended => _isSuspended;
+    public bool CanToggleSuspend => !IsProtected;
+    public string ActionButtonText => _isSuspended ? "Продолжить" : "Пауза";
+    public Wpf.Ui.Controls.SymbolRegular ActionButtonIcon =>
+        _isSuspended ? Wpf.Ui.Controls.SymbolRegular.Play16 : Wpf.Ui.Controls.SymbolRegular.Pause16;
+    public string ActionTooltip => IsProtected
+        ? "Системный процесс или VPN-клиент защищён от заморозки"
+        : _isSuspended
+            ? $"Возобновить процесс «{ProcessName}» (NtResumeProcess)"
+            : $"Приостановить загрузку «{ProcessName}» (NtSuspendProcess)";
+
+    public NetworkConsumerItemViewModel(
+        NetworkProcessTraffic traffic,
+        ProcessMonitorModule processMonitorModule)
+    {
+        _processMonitorModule = processMonitorModule;
+        _pids = traffic.Pids;
+        _isSuspended = traffic.IsSuspended;
+        ProcessName = traffic.ProcessName;
+        IsProtected = traffic.IsProtected;
+        Icon = ProcessIconResolver.GetSmallIcon(traffic.ProcessName, traffic.ExecutablePath);
+        DownloadText = traffic.IsSuspended
+            ? "На паузе"
+            : $"↓ {traffic.DownloadMbps:0.0} Мбит/с";
+        UploadText = traffic.IsSuspended
+            ? "—"
+            : $"↑ {traffic.UploadMbps:0.0} Мбит/с";
+        TooltipText = $"PID: {string.Join(", ", traffic.Pids)} • ↓ {traffic.DownloadMbps:0.00} Мбит/с • ↑ {traffic.UploadMbps:0.00} Мбит/с";
+    }
+
+    [RelayCommand]
+    private void ToggleSuspend()
+    {
+        if (IsProtected)
+        {
+            return;
+        }
+
+        if (_isSuspended)
+        {
+            _processMonitorModule.ResumeGroup(_pids, ProcessName, out _);
+        }
+        else
+        {
+            _processMonitorModule.SuspendGroup(_pids, ProcessName, out _);
+        }
     }
 }

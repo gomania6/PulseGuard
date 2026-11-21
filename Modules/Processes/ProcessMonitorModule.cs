@@ -61,6 +61,8 @@ public sealed class ProcessMonitorModule : IMonitorModule
     };
 
     private readonly object _syncLock = new();
+    private readonly object _suspendLock = new();
+    private readonly HashSet<int> _suspendedProcessIds = new();
     private Dictionary<int, ProcessSample> _previousSamples = new(256);
     private Dictionary<int, ProcessSample> _nextSamples = new(256);
     private readonly Dictionary<string, GroupAccumulator> _groups = new(128, StringComparer.OrdinalIgnoreCase);
@@ -74,6 +76,19 @@ public sealed class ProcessMonitorModule : IMonitorModule
     public bool IsEnabled { get; set; } = true;
 
     public ProcessesSnapshot LatestSnapshot { get; private set; } = ProcessesSnapshot.Empty;
+
+    public IReadOnlySet<int> SuspendedProcessIds
+    {
+        get
+        {
+            lock (_suspendLock)
+            {
+                return new HashSet<int>(_suspendedProcessIds);
+            }
+        }
+    }
+
+    public event Action? SuspendedProcessesChanged;
 
     public Task InitializeAsync(CancellationToken cancellationToken = default)
     {
@@ -433,6 +448,212 @@ public sealed class ProcessMonitorModule : IMonitorModule
         return true;
     }
 
+    public bool IsGroupSuspended(IEnumerable<int> pids)
+    {
+        lock (_suspendLock)
+        {
+            foreach (int pid in pids)
+            {
+                if (_suspendedProcessIds.Contains(pid))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Safely suspends all non-protected PIDs in a process group using ntdll.dll NtSuspendProcess.
+    /// Strictly blocks System, Idle, explorer, dwm, svchost, PulseGuard, and the active VPN client.
+    /// </summary>
+    public bool SuspendGroup(IReadOnlyList<int> pids, string processName, out string message)
+    {
+        if (ProcessBlacklist.IsProtected(processName))
+        {
+            message = "Защищённый системный процесс или VPN-клиент — заморозка запрещена.";
+            return false;
+        }
+
+        int suspendedCount = 0;
+
+        foreach (int pid in pids)
+        {
+            if (IsProtectedPid(pid) || IsProtectedLiveProcess(pid))
+            {
+                continue;
+            }
+
+            IntPtr handle = IntPtr.Zero;
+            try
+            {
+                handle = ProcessNativeMethods.OpenProcess(
+                    ProcessNativeMethods.PROCESS_SUSPEND_RESUME,
+                    false,
+                    pid);
+
+                if (handle != IntPtr.Zero && ProcessNativeMethods.NtSuspendProcess(handle) >= 0)
+                {
+                    lock (_suspendLock)
+                    {
+                        _suspendedProcessIds.Add(pid);
+                    }
+                    suspendedCount++;
+                }
+            }
+            catch
+            {
+                // Skip exited or inaccessible processes silently.
+            }
+            finally
+            {
+                if (handle != IntPtr.Zero)
+                {
+                    ProcessNativeMethods.CloseHandle(handle);
+                }
+            }
+        }
+
+        if (suspendedCount == 0)
+        {
+            message = $"Не удалось заморозить «{processName}».";
+            return false;
+        }
+
+        SuspendedProcessesChanged?.Invoke();
+        message = pids.Count > 1
+            ? $"Процесс «{processName}» ({suspendedCount} экз.) заморожен."
+            : $"Процесс «{processName}» заморожен.";
+        return true;
+    }
+
+    /// <summary>
+    /// Resumes all suspended PIDs in a process group using ntdll.dll NtResumeProcess.
+    /// </summary>
+    public bool ResumeGroup(IReadOnlyList<int> pids, string processName, out string message)
+    {
+        int resumedCount = 0;
+
+        foreach (int pid in pids)
+        {
+            if (IsProtectedPid(pid))
+            {
+                continue;
+            }
+
+            IntPtr handle = IntPtr.Zero;
+            try
+            {
+                handle = ProcessNativeMethods.OpenProcess(
+                    ProcessNativeMethods.PROCESS_SUSPEND_RESUME,
+                    false,
+                    pid);
+
+                if (handle != IntPtr.Zero && ProcessNativeMethods.NtResumeProcess(handle) >= 0)
+                {
+                    resumedCount++;
+                }
+            }
+            catch
+            {
+                // Skip exited or inaccessible processes silently.
+            }
+            finally
+            {
+                if (handle != IntPtr.Zero)
+                {
+                    ProcessNativeMethods.CloseHandle(handle);
+                }
+
+                lock (_suspendLock)
+                {
+                    _suspendedProcessIds.Remove(pid);
+                }
+            }
+        }
+
+        SuspendedProcessesChanged?.Invoke();
+
+        if (resumedCount == 0)
+        {
+            message = $"Не удалось возобновить «{processName}» (возможно, процесс уже завершён).";
+            return false;
+        }
+
+        message = pids.Count > 1
+            ? $"Процесс «{processName}» ({resumedCount} экз.) возобновлён."
+            : $"Процесс «{processName}» возобновлён.";
+        return true;
+    }
+
+    /// <summary>
+    /// Automatically resumes all processes suspended by PulseGuard (must be called on app exit).
+    /// </summary>
+    public void ResumeAllSuspendedProcesses()
+    {
+        int[] pidsToResume;
+        lock (_suspendLock)
+        {
+            if (_suspendedProcessIds.Count == 0)
+            {
+                return;
+            }
+
+            pidsToResume = new int[_suspendedProcessIds.Count];
+            _suspendedProcessIds.CopyTo(pidsToResume);
+            _suspendedProcessIds.Clear();
+        }
+
+        foreach (int pid in pidsToResume)
+        {
+            if (IsProtectedPid(pid))
+            {
+                continue;
+            }
+
+            IntPtr handle = IntPtr.Zero;
+            try
+            {
+                handle = ProcessNativeMethods.OpenProcess(
+                    ProcessNativeMethods.PROCESS_SUSPEND_RESUME,
+                    false,
+                    pid);
+
+                if (handle != IntPtr.Zero)
+                {
+                    ProcessNativeMethods.NtResumeProcess(handle);
+                }
+            }
+            catch
+            {
+                // Best-effort resume on shutdown.
+            }
+            finally
+            {
+                if (handle != IntPtr.Zero)
+                {
+                    ProcessNativeMethods.CloseHandle(handle);
+                }
+            }
+        }
+
+        SuspendedProcessesChanged?.Invoke();
+    }
+
+    private static bool IsProtectedLiveProcess(int pid)
+    {
+        try
+        {
+            using var proc = Process.GetProcessById(pid);
+            return ProcessBlacklist.IsProtected(proc.ProcessName);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private static bool IsProtectedPid(int pid) => pid <= 4 || pid == Environment.ProcessId;
 
     private static bool TryGetProcessIoBytes(int pid, out ulong totalIoBytes)
@@ -485,6 +706,7 @@ public sealed class ProcessMonitorModule : IMonitorModule
         }
 
         _disposed = true;
+        ResumeAllSuspendedProcesses();
         lock (_syncLock)
         {
             _previousSamples.Clear();

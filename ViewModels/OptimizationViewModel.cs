@@ -1,20 +1,28 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PulseGuard.Modules.Network;
 using PulseGuard.Modules.Optimization;
+using PulseGuard.Modules.Settings;
+using PulseGuard.Modules.Vpn;
 
 namespace PulseGuard.ViewModels;
+
+public sealed record AutoCleanIntervalOption(int Minutes, string DisplayText);
 
 public partial class OptimizationViewModel : ObservableObject
 {
     private readonly SafeRamCleanerTool _ramCleanerTool;
     private readonly TempFilesCleanerTool _tempCleanerTool;
-    private readonly GameModeTool _gameModeTool;
+    private readonly NetworkOptimizerTool _networkOptimizerTool;
+    private readonly VpnService _vpnService;
+    private readonly SettingsService _settingsService;
+    private readonly RamAutoCleanSchedulerModule _ramAutoCleanScheduler;
+    private bool _isSyncingRamScheduler;
 
     private TempAnalysisResult? _lastTempAnalysis;
-    private bool _isUpdatingGameMode;
 
     [ObservableProperty]
-    private string _title = "Оптимизация";
+    private string _title = "Оптимизация системы";
 
     // Card 1: Safe RAM Cleaner
     [ObservableProperty]
@@ -27,14 +35,42 @@ public partial class OptimizationViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanCleanRam))]
     private bool _isCleaningRam;
 
-    // Card 2: Temporary Files Cleaner
+    // Card 1.1: RAM Auto-Clean Scheduler
     [ObservableProperty]
+    private bool _isAutoRamCleanEnabled;
+
+    [ObservableProperty]
+    private double _autoRamCleanThresholdPercent = 85.0;
+
+    [ObservableProperty]
+    private AutoCleanIntervalOption _selectedAutoCleanIntervalOption;
+
+    [ObservableProperty]
+    private string _autoRamCleanStatus = "Авто-очистка отключена.";
+
+    public IReadOnlyList<AutoCleanIntervalOption> AutoCleanIntervalOptions { get; } =
+    [
+        new(0, "Только по порогу ОЗУ"),
+        new(30, "Порог + каждые 30 мин"),
+        new(60, "Порог + каждый 1 час"),
+        new(120, "Порог + каждые 2 часа")
+    ];
+
+    // Card 2: Temporary Files & Cache Cleaner
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCleanTemp))]
     private bool _includeUserTemp = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCleanTemp))]
     private bool _includeSystemTemp = true;
 
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCleanTemp))]
+    private bool _includeD3dShaderCache = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanCleanTemp))]
     private bool _includeRecycleBin = false;
 
     [ObservableProperty]
@@ -42,6 +78,9 @@ public partial class OptimizationViewModel : ObservableObject
 
     [ObservableProperty]
     private string _systemTempInfo = "Не проверено";
+
+    [ObservableProperty]
+    private string _d3dShaderCacheInfo = "Не проверено";
 
     [ObservableProperty]
     private string _recycleBinInfo = "Не проверено";
@@ -67,32 +106,91 @@ public partial class OptimizationViewModel : ObservableObject
     [NotifyPropertyChangedFor(nameof(CanCleanTemp))]
     private long _selectedReclaimableBytes;
 
-    // Card 3: Game Mode
+    // Card 3: Network & DNS Optimization
     [ObservableProperty]
-    private bool _isGameModeEnabled;
+    private string _networkAdapterInfo = "Нажмите «Проверить DNS» для замера отклика серверов.";
 
     [ObservableProperty]
-    [NotifyPropertyChangedFor(nameof(CanToggleGameMode))]
-    private bool _isTogglingGameMode;
+    private string _networkBenchmarkSummary = string.Empty;
 
     [ObservableProperty]
-    private string _gameModeStatus = "Игровой режим отключён. Исходная схема питания и приоритеты не изменены.";
+    private string _networkActionStatus = "Очищает кэш DNS, выбирает быстрейший DNS и нормализует TCP Auto-Tuning через штатный netsh (без правки реестра).";
 
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(CanRunNetworkAction))]
+    private bool _isNetworkBusy;
+
+    public bool CanRunNetworkAction => !IsNetworkBusy;
     public bool CanCleanRam => !IsCleaningRam;
     public bool CanAnalyzeTemp => !IsAnalyzingTemp && !IsCleaningTemp;
-    public bool CanCleanTemp => !IsAnalyzingTemp && !IsCleaningTemp && HasTempAnalysis && SelectedReclaimableBytes > 0;
-    public bool CanToggleGameMode => !IsTogglingGameMode;
+    public bool CanCleanTemp => !IsAnalyzingTemp
+        && !IsCleaningTemp
+        && (IncludeUserTemp || IncludeSystemTemp || IncludeD3dShaderCache || IncludeRecycleBin);
 
     public OptimizationViewModel(
         SafeRamCleanerTool ramCleanerTool,
         TempFilesCleanerTool tempCleanerTool,
-        GameModeTool gameModeTool)
+        NetworkOptimizerTool networkOptimizerTool,
+        VpnService vpnService,
+        SettingsService settingsService,
+        RamAutoCleanSchedulerModule ramAutoCleanScheduler)
     {
         _ramCleanerTool = ramCleanerTool;
         _tempCleanerTool = tempCleanerTool;
-        _gameModeTool = gameModeTool;
+        _networkOptimizerTool = networkOptimizerTool;
+        _vpnService = vpnService;
+        _settingsService = settingsService;
+        _ramAutoCleanScheduler = ramAutoCleanScheduler;
 
+        _selectedAutoCleanIntervalOption = AutoCleanIntervalOptions[0];
+        LoadRamSchedulerSettings();
+        _ramAutoCleanScheduler.AutoCleanCompleted += status =>
+        {
+            System.Windows.Application.Current?.Dispatcher.BeginInvoke(() => AutoRamCleanStatus = status);
+        };
         RefreshRamStatus();
+    }
+
+    private void LoadRamSchedulerSettings()
+    {
+        _isSyncingRamScheduler = true;
+        try
+        {
+            var s = _settingsService.Current;
+            IsAutoRamCleanEnabled = s.IsAutoRamCleanEnabled;
+            AutoRamCleanThresholdPercent = s.AutoRamCleanThresholdPercent;
+            SelectedAutoCleanIntervalOption = AutoCleanIntervalOptions.FirstOrDefault(o => o.Minutes == s.AutoRamCleanIntervalMinutes)
+                                              ?? AutoCleanIntervalOptions[0];
+            AutoRamCleanStatus = s.IsAutoRamCleanEnabled
+                ? $"Планировщик активен: порог {s.AutoRamCleanThresholdPercent:0}% ({SelectedAutoCleanIntervalOption.DisplayText})."
+                : "Авто-очистка отключена.";
+        }
+        finally
+        {
+            _isSyncingRamScheduler = false;
+        }
+    }
+
+    partial void OnIsAutoRamCleanEnabledChanged(bool value)
+    {
+        if (_isSyncingRamScheduler) return;
+        _settingsService.Update(s => s.IsAutoRamCleanEnabled = value);
+        AutoRamCleanStatus = value
+            ? $"Планировщик включён: порог {AutoRamCleanThresholdPercent:0}%."
+            : "Авто-очистка отключена.";
+    }
+
+    partial void OnAutoRamCleanThresholdPercentChanged(double value)
+    {
+        if (_isSyncingRamScheduler) return;
+        double rounded = Math.Clamp(Math.Round(value), 65.0, 95.0);
+        _settingsService.Update(s => s.AutoRamCleanThresholdPercent = rounded);
+    }
+
+    partial void OnSelectedAutoCleanIntervalOptionChanged(AutoCleanIntervalOption value)
+    {
+        if (_isSyncingRamScheduler || value is null) return;
+        _settingsService.Update(s => s.AutoRamCleanIntervalMinutes = value.Minutes);
     }
 
     public void RefreshRamStatus()
@@ -113,29 +211,22 @@ public partial class OptimizationViewModel : ObservableObject
         RecalculateSelectedTempBytes();
     }
 
+    partial void OnIncludeD3dShaderCacheChanged(bool value)
+    {
+        _tempCleanerTool.IncludeD3dShaderCache = value;
+        RecalculateSelectedTempBytes();
+    }
+
     partial void OnIncludeRecycleBinChanged(bool value)
     {
         _tempCleanerTool.IncludeRecycleBin = value;
         RecalculateSelectedTempBytes();
     }
 
-    partial void OnIsGameModeEnabledChanged(bool value)
-    {
-        if (_isUpdatingGameMode)
-        {
-            return;
-        }
-
-        _ = ApplyGameModeAsync(value);
-    }
-
     [RelayCommand]
     private async Task CleanRamAsync()
     {
-        if (IsCleaningRam)
-        {
-            return;
-        }
+        if (IsCleaningRam) return;
 
         IsCleaningRam = true;
         RamActionStatus = "Оптимизация рабочей памяти процессов...";
@@ -155,20 +246,15 @@ public partial class OptimizationViewModel : ObservableObject
     [RelayCommand]
     private async Task AnalyzeTempAsync()
     {
-        if (IsAnalyzingTemp || IsCleaningTemp)
-        {
-            return;
-        }
+        if (IsAnalyzingTemp || IsCleaningTemp) return;
 
         IsAnalyzingTemp = true;
-        TempActionStatus = "Сканирование временных каталогов и Корзины...";
+        TempActionStatus = "Сканирование временных каталогов, D3DSCache и Корзины...";
 
         try
         {
             _lastTempAnalysis = await _tempCleanerTool.AnalyzeAsync();
-            UserTempInfo = $"{_lastTempAnalysis.UserTemp.FileCount} файлов • {TempFilesCleanerTool.FormatSize(_lastTempAnalysis.UserTemp.TotalBytes)}";
-            SystemTempInfo = $"{_lastTempAnalysis.SystemTemp.FileCount} файлов • {TempFilesCleanerTool.FormatSize(_lastTempAnalysis.SystemTemp.TotalBytes)}";
-            RecycleBinInfo = $"{_lastTempAnalysis.RecycleBin.FileCount} объектов • {TempFilesCleanerTool.FormatSize(_lastTempAnalysis.RecycleBin.TotalBytes)}";
+            UpdateTempInfos(_lastTempAnalysis);
 
             HasTempAnalysis = true;
             RecalculateSelectedTempBytes();
@@ -186,10 +272,7 @@ public partial class OptimizationViewModel : ObservableObject
     [RelayCommand]
     private async Task CleanTempAsync()
     {
-        if (!CanCleanTemp)
-        {
-            return;
-        }
+        if (!CanCleanTemp) return;
 
         IsCleaningTemp = true;
         TempActionStatus = "Безопасное удаление выбранных файлов...";
@@ -198,16 +281,15 @@ public partial class OptimizationViewModel : ObservableObject
         {
             _tempCleanerTool.IncludeUserTemp = IncludeUserTemp;
             _tempCleanerTool.IncludeSystemTemp = IncludeSystemTemp;
+            _tempCleanerTool.IncludeD3dShaderCache = IncludeD3dShaderCache;
             _tempCleanerTool.IncludeRecycleBin = IncludeRecycleBin;
 
             var result = await _tempCleanerTool.ExecuteAsync();
             TempActionStatus = result.Message;
 
-            // Refresh analysis after cleanup so counts reflect remaining locked files.
             _lastTempAnalysis = await _tempCleanerTool.AnalyzeAsync();
-            UserTempInfo = $"{_lastTempAnalysis.UserTemp.FileCount} файлов • {TempFilesCleanerTool.FormatSize(_lastTempAnalysis.UserTemp.TotalBytes)}";
-            SystemTempInfo = $"{_lastTempAnalysis.SystemTemp.FileCount} файлов • {TempFilesCleanerTool.FormatSize(_lastTempAnalysis.SystemTemp.TotalBytes)}";
-            RecycleBinInfo = $"{_lastTempAnalysis.RecycleBin.FileCount} объектов • {TempFilesCleanerTool.FormatSize(_lastTempAnalysis.RecycleBin.TotalBytes)}";
+            UpdateTempInfos(_lastTempAnalysis);
+            HasTempAnalysis = true;
             RecalculateSelectedTempBytes();
         }
         finally
@@ -216,30 +298,12 @@ public partial class OptimizationViewModel : ObservableObject
         }
     }
 
-    private async Task ApplyGameModeAsync(bool enable)
+    private void UpdateTempInfos(TempAnalysisResult analysis)
     {
-        IsTogglingGameMode = true;
-        GameModeStatus = enable ? "Активация игрового режима..." : "Восстановление исходных параметров...";
-
-        try
-        {
-            var result = enable
-                ? await _gameModeTool.EnableAsync()
-                : await _gameModeTool.DisableAsync();
-
-            GameModeStatus = result.Message;
-        }
-        catch (Exception ex)
-        {
-            _isUpdatingGameMode = true;
-            IsGameModeEnabled = _gameModeTool.IsActive;
-            _isUpdatingGameMode = false;
-            GameModeStatus = $"Ошибка переключения игрового режима: {ex.Message}";
-        }
-        finally
-        {
-            IsTogglingGameMode = false;
-        }
+        UserTempInfo = $"{analysis.UserTemp.FileCount} файлов • {TempFilesCleanerTool.FormatSize(analysis.UserTemp.TotalBytes)}";
+        SystemTempInfo = $"{analysis.SystemTemp.FileCount} файлов • {TempFilesCleanerTool.FormatSize(analysis.SystemTemp.TotalBytes)}";
+        D3dShaderCacheInfo = $"{analysis.D3dShaderCache.FileCount} файлов • {TempFilesCleanerTool.FormatSize(analysis.D3dShaderCache.TotalBytes)}";
+        RecycleBinInfo = $"{analysis.RecycleBin.FileCount} объектов • {TempFilesCleanerTool.FormatSize(analysis.RecycleBin.TotalBytes)}";
     }
 
     private void RecalculateSelectedTempBytes()
@@ -251,21 +315,106 @@ public partial class OptimizationViewModel : ObservableObject
         }
 
         long total = 0;
-        if (IncludeUserTemp)
-        {
-            total += _lastTempAnalysis.UserTemp.TotalBytes;
-        }
-
-        if (IncludeSystemTemp)
-        {
-            total += _lastTempAnalysis.SystemTemp.TotalBytes;
-        }
-
-        if (IncludeRecycleBin)
-        {
-            total += _lastTempAnalysis.RecycleBin.TotalBytes;
-        }
+        if (IncludeUserTemp) total += _lastTempAnalysis.UserTemp.TotalBytes;
+        if (IncludeSystemTemp) total += _lastTempAnalysis.SystemTemp.TotalBytes;
+        if (IncludeD3dShaderCache) total += _lastTempAnalysis.D3dShaderCache.TotalBytes;
+        if (IncludeRecycleBin) total += _lastTempAnalysis.RecycleBin.TotalBytes;
 
         SelectedReclaimableBytes = total;
+    }
+
+    [RelayCommand]
+    private async Task DiagnoseNetworkAsync()
+    {
+        if (IsNetworkBusy) return;
+
+        IsNetworkBusy = true;
+        NetworkActionStatus = "Замер отклика DNS-серверов (Cloudflare, Google, Quad9, Yandex)...";
+        try
+        {
+            var diag = await _networkOptimizerTool.DiagnoseAsync();
+            string bestServer = await _vpnService.RefreshNearestServerAsync();
+            NetworkAdapterInfo = string.IsNullOrWhiteSpace(diag.AdapterName)
+                ? "Активный адаптер не найден"
+                : $"Адаптер: {diag.AdapterName} • Текущий DNS: {diag.CurrentDns} • Сервер проверки Loss/Jitter: {bestServer}";
+
+            NetworkBenchmarkSummary = string.Join("  |  ",
+                diag.Candidates.Select(c => c.PingMs.HasValue
+                    ? $"{c.Name} ({c.PrimaryIp}): {c.PingMs} мс"
+                    : $"{c.Name} ({c.PrimaryIp}): таймаут"));
+
+            NetworkActionStatus = diag.FastestCandidate is { } best
+                ? $"Рекомендуемый ближайший DNS: {best.Name} ({best.PrimaryIp}, {best.PingMs} мс)."
+                : "Не удалось измерить отклик DNS-серверов.";
+        }
+        finally
+        {
+            IsNetworkBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task OptimizeNetworkAsync()
+    {
+        if (IsNetworkBusy) return;
+
+        IsNetworkBusy = true;
+        NetworkActionStatus = "Применение быстрого DNS, очистка кэша и настройка TCP...";
+        try
+        {
+            var result = await _networkOptimizerTool.ExecuteAsync();
+            _ = await _vpnService.RefreshNearestServerAsync();
+            NetworkActionStatus = result.Message;
+
+            var diag = await _networkOptimizerTool.DiagnoseAsync();
+            if (!string.IsNullOrWhiteSpace(diag.AdapterName))
+            {
+                NetworkAdapterInfo = $"Адаптер: {diag.AdapterName} • Текущий DNS: {diag.CurrentDns}";
+            }
+        }
+        finally
+        {
+            IsNetworkBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task FlushDnsAsync()
+    {
+        if (IsNetworkBusy) return;
+
+        IsNetworkBusy = true;
+        try
+        {
+            var result = await _networkOptimizerTool.FlushDnsAsync();
+            NetworkActionStatus = result.Message;
+        }
+        finally
+        {
+            IsNetworkBusy = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task ResetDnsToDhcpAsync()
+    {
+        if (IsNetworkBusy) return;
+
+        IsNetworkBusy = true;
+        try
+        {
+            var result = await _networkOptimizerTool.ResetDnsToDhcpAsync();
+            NetworkActionStatus = result.Message;
+
+            var diag = await _networkOptimizerTool.DiagnoseAsync();
+            if (!string.IsNullOrWhiteSpace(diag.AdapterName))
+            {
+                NetworkAdapterInfo = $"Адаптер: {diag.AdapterName} • Текущий DNS: {diag.CurrentDns}";
+            }
+        }
+        finally
+        {
+            IsNetworkBusy = false;
+        }
     }
 }

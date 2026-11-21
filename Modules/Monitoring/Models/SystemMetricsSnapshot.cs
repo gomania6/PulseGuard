@@ -10,6 +10,7 @@ public sealed class SystemMetricsSnapshot
     public double? CpuTemperatureC { get; set; }
     public double? CpuClockMhz { get; set; }
     public bool CpuClockIsBaseOnly { get; set; }
+    public string? CpuTemperatureUnavailableReason { get; set; }
     public string? CpuDiagnosticError { get; set; }
 
     public string GpuName { get; set; } = "GPU";

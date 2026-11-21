@@ -9,27 +9,32 @@ public sealed record TempTargetAnalysis(int FileCount, long TotalBytes);
 public sealed record TempAnalysisResult(
     TempTargetAnalysis UserTemp,
     TempTargetAnalysis SystemTemp,
+    TempTargetAnalysis D3dShaderCache,
     TempTargetAnalysis RecycleBin);
 
 /// <summary>
-/// Safely analyzes and cleans user temp, Windows temp, and optionally the Recycle Bin.
+/// Safely analyzes and cleans user temp, Windows temp, Direct3D shader cache, and optionally the Recycle Bin.
 /// Always wraps deletions in try-catch to silently skip locked files.
 /// </summary>
 public sealed class TempFilesCleanerTool : IOptimizerTool
 {
     public string Id => "temp-files-cleaner";
     public string Name => "Очистка временных файлов";
-    public string Description => "Безопасное удаление временных файлов пользователя, Windows Temp и Корзины с предпросмотром.";
+    public string Description => "Безопасное удаление временных файлов пользователя, Windows Temp, кэша D3D и Корзины с предпросмотром.";
     public bool CanExecute => true;
 
     public bool IncludeUserTemp { get; set; } = true;
     public bool IncludeSystemTemp { get; set; } = true;
+    public bool IncludeD3dShaderCache { get; set; } = true;
     public bool IncludeRecycleBin { get; set; } = false;
 
     public static string UserTempPath => Path.GetTempPath();
     public static string SystemTempPath => Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.Windows),
         "Temp");
+    public static string D3dShaderCachePath => Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+        "D3DSCache");
 
     public Task<TempAnalysisResult> AnalyzeAsync(CancellationToken cancellationToken = default)
     {
@@ -37,9 +42,10 @@ public sealed class TempFilesCleanerTool : IOptimizerTool
         {
             var userTemp = AnalyzeDirectory(UserTempPath, cancellationToken);
             var systemTemp = AnalyzeDirectory(SystemTempPath, cancellationToken);
+            var d3dCache = AnalyzeDirectory(D3dShaderCachePath, cancellationToken);
             var recycleBin = AnalyzeRecycleBin();
 
-            return new TempAnalysisResult(userTemp, systemTemp, recycleBin);
+            return new TempAnalysisResult(userTemp, systemTemp, d3dCache, recycleBin);
         }, cancellationToken);
     }
 
@@ -59,6 +65,12 @@ public sealed class TempFilesCleanerTool : IOptimizerTool
         {
             totalBytes += analysis.SystemTemp.TotalBytes;
             totalFiles += analysis.SystemTemp.FileCount;
+        }
+
+        if (IncludeD3dShaderCache)
+        {
+            totalBytes += analysis.D3dShaderCache.TotalBytes;
+            totalFiles += analysis.D3dShaderCache.FileCount;
         }
 
         if (IncludeRecycleBin)
@@ -90,6 +102,13 @@ public sealed class TempFilesCleanerTool : IOptimizerTool
             if (IncludeSystemTemp)
             {
                 var (count, bytes) = CleanDirectory(SystemTempPath, cancellationToken);
+                deletedFiles += count;
+                freedBytes += bytes;
+            }
+
+            if (IncludeD3dShaderCache)
+            {
+                var (count, bytes) = CleanDirectory(D3dShaderCachePath, cancellationToken);
                 deletedFiles += count;
                 freedBytes += bytes;
             }

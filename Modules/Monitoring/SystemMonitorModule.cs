@@ -1,22 +1,29 @@
+using System.IO;
 using System.Net.NetworkInformation;
 using System.Runtime.InteropServices;
+using System.Text;
 using LibreHardwareMonitor.Hardware;
 using PulseGuard.Core.Interfaces;
 using PulseGuard.Modules.Monitoring.Models;
+using PulseGuard.Modules.Settings;
+using PulseGuard.Modules.Settings.Models;
 
 namespace PulseGuard.Modules.Monitoring;
 
 /// <summary>
-/// Modular hardware monitor using LibreHardwareMonitorLib (CPU/GPU),
+/// Modular hardware monitor using LibreHardwareMonitorLib (CPU/Motherboard/GPU),
 /// native Win32 APIs (GetSystemTimes, CallNtPowerInformation, GlobalMemoryStatusEx),
-/// and NetworkInterface for network throughput.
+/// NetworkInterface for network throughput, and SafeCpuTemperatureFallback cascade.
 /// </summary>
 public sealed class SystemMonitorModule : IMonitorModule
 {
+    private readonly SettingsService _settingsService;
+    private readonly SafeCpuTemperatureFallback _safeCpuTemperatureFallback = new();
     private Computer? _computer;
     private readonly UpdateVisitor _updateVisitor = new();
     private readonly SystemMetricsSnapshot _snapshot = new();
     private readonly List<IHardware> _cpuHardware = new(2);
+    private readonly List<IHardware> _motherboardHardware = new(2);
     private readonly List<IHardware> _gpuHardware = new(2);
     private readonly PROCESSOR_POWER_INFORMATION[] _powerInfoBuffer = new PROCESSOR_POWER_INFORMATION[Math.Max(1, Environment.ProcessorCount)];
 
@@ -34,6 +41,10 @@ public sealed class SystemMonitorModule : IMonitorModule
     private DateTime _lastNetworkSampleUtc;
     private bool _hasNetworkBaseline;
     private bool _initialized;
+    private bool _activeDisableCpuDriverSetting;
+    private volatile bool _reinitComputerRequested;
+    private bool _cpuDriverOpenFailed;
+    private string? _lastLhmInitError;
 
     public string Id => "system-monitor";
     public string Name => "Системный мониторинг";
@@ -42,6 +53,20 @@ public sealed class SystemMonitorModule : IMonitorModule
 
     public SystemMetricsSnapshot LatestSnapshot => _snapshot;
 
+    public SystemMonitorModule(SettingsService settingsService)
+    {
+        _settingsService = settingsService;
+        _settingsService.SettingsChanged += OnSettingsChanged;
+    }
+
+    private void OnSettingsChanged(AppSettings settings)
+    {
+        if (_initialized && settings.DisableCpuKernelDriver != _activeDisableCpuDriverSetting)
+        {
+            _reinitComputerRequested = true;
+        }
+    }
+
     public Task InitializeAsync(CancellationToken cancellationToken = default)
     {
         if (_initialized)
@@ -49,48 +74,7 @@ public sealed class SystemMonitorModule : IMonitorModule
             return Task.CompletedTask;
         }
 
-        string? initError = null;
-
-        try
-        {
-            _computer = new Computer
-            {
-                IsCpuEnabled = true,
-                IsGpuEnabled = true,
-                IsMotherboardEnabled = false,
-                IsMemoryEnabled = false,
-                IsNetworkEnabled = false,
-                IsControllerEnabled = false,
-                IsStorageEnabled = false
-            };
-
-            _computer.Open();
-            _computer.Accept(_updateVisitor);
-
-            _cpuHardware.Clear();
-            _gpuHardware.Clear();
-
-            foreach (var hardware in _computer.Hardware)
-            {
-                if (hardware.HardwareType == HardwareType.Cpu)
-                {
-                    _cpuHardware.Add(hardware);
-                    _snapshot.CpuName = hardware.Name;
-                }
-                else if (hardware.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel)
-                {
-                    _gpuHardware.Add(hardware);
-                    if (_gpuHardware.Count == 1 || hardware.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd)
-                    {
-                        _snapshot.GpuName = hardware.Name;
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            initError = $"LibreHardwareMonitor: {ex.Message}";
-        }
+        InitializeComputer();
 
         if (TryGetSystemTimes(out ulong idle, out ulong kernel, out ulong user))
         {
@@ -113,9 +97,162 @@ public sealed class SystemMonitorModule : IMonitorModule
             _hasNetworkBaseline = false;
         }
 
-        _snapshot.CpuDiagnosticError = initError;
         _initialized = true;
+        WriteSensorDiagnosticsFile();
         return Task.CompletedTask;
+    }
+
+    private void InitializeComputer()
+    {
+        _computer?.Close();
+        _computer = null;
+        _cpuHardware.Clear();
+        _motherboardHardware.Clear();
+        _gpuHardware.Clear();
+        _cpuDriverOpenFailed = false;
+        _lastLhmInitError = null;
+
+        bool disableCpuDriver = _settingsService.Current.DisableCpuKernelDriver;
+        _activeDisableCpuDriverSetting = disableCpuDriver;
+        string? initError = null;
+
+        try
+        {
+            _computer = new Computer
+            {
+                IsCpuEnabled = !disableCpuDriver,
+                IsGpuEnabled = true,
+                IsMotherboardEnabled = !disableCpuDriver,
+                IsMemoryEnabled = false,
+                IsNetworkEnabled = false,
+                IsControllerEnabled = false,
+                IsStorageEnabled = false
+            };
+
+            _computer.Open();
+            _computer.Accept(_updateVisitor);
+            CollectHardware(_computer);
+        }
+        catch (Exception ex)
+        {
+            initError = $"LibreHardwareMonitor: {ex.Message}";
+            _lastLhmInitError = initError;
+            if (!disableCpuDriver)
+            {
+                _cpuDriverOpenFailed = true;
+                try
+                {
+                    _computer?.Close();
+                    _computer = new Computer
+                    {
+                        IsCpuEnabled = false,
+                        IsGpuEnabled = true,
+                        IsMotherboardEnabled = false,
+                        IsMemoryEnabled = false,
+                        IsNetworkEnabled = false,
+                        IsControllerEnabled = false,
+                        IsStorageEnabled = false
+                    };
+                    _computer.Open();
+                    _computer.Accept(_updateVisitor);
+                    CollectHardware(_computer);
+                }
+                catch
+                {
+                    // GPU-only fallback also failed; keep going with native APIs and safe CPU fallbacks.
+                }
+            }
+        }
+
+        _snapshot.CpuDiagnosticError = initError;
+    }
+
+    private void CollectHardware(Computer computer)
+    {
+        _cpuHardware.Clear();
+        _motherboardHardware.Clear();
+        _gpuHardware.Clear();
+
+        foreach (var hardware in computer.Hardware)
+        {
+            if (hardware.HardwareType == HardwareType.Cpu)
+            {
+                _cpuHardware.Add(hardware);
+                _snapshot.CpuName = hardware.Name;
+            }
+            else if (hardware.HardwareType == HardwareType.Motherboard)
+            {
+                _motherboardHardware.Add(hardware);
+            }
+            else if (hardware.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd or HardwareType.GpuIntel)
+            {
+                _gpuHardware.Add(hardware);
+                if (_gpuHardware.Count == 1 || hardware.HardwareType is HardwareType.GpuNvidia or HardwareType.GpuAmd)
+                {
+                    _snapshot.GpuName = hardware.Name;
+                }
+            }
+        }
+    }
+
+    private void WriteSensorDiagnosticsFile()
+    {
+        try
+        {
+            string dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "PulseGuard");
+            Directory.CreateDirectory(dir);
+            string path = Path.Combine(dir, "cpu_sensor_diag.txt");
+
+            var sb = new StringBuilder();
+            sb.AppendLine($"PulseGuard CPU Sensor Diagnostics ({DateTime.Now:yyyy-MM-dd HH:mm:ss})");
+            sb.AppendLine($"DisableCpuKernelDriver setting: {_activeDisableCpuDriverSetting}");
+            sb.AppendLine($"[Source 1] LibreHardwareMonitorLib: cpuHardware={_cpuHardware.Count}, motherboardHardware={_motherboardHardware.Count}, gpuHardware={_gpuHardware.Count}, openFailed={_cpuDriverOpenFailed}");
+            if (!string.IsNullOrWhiteSpace(_lastLhmInitError))
+            {
+                sb.AppendLine($"  InitError: {_lastLhmInitError}");
+            }
+
+            AppendLhmHardwareDiagnostics(sb, "CPU", _cpuHardware);
+            AppendLhmHardwareDiagnostics(sb, "Motherboard", _motherboardHardware);
+
+            _safeCpuTemperatureFallback.AppendDiagnostics(sb);
+
+            File.WriteAllText(path, sb.ToString(), Encoding.UTF8);
+        }
+        catch
+        {
+            // Never let diagnostic logging disrupt monitoring.
+        }
+    }
+
+    private static void AppendLhmHardwareDiagnostics(StringBuilder sb, string label, List<IHardware> hardwareList)
+    {
+        for (int i = 0; i < hardwareList.Count; i++)
+        {
+            var hw = hardwareList[i];
+            sb.AppendLine($"  [{label}] {hw.Name} ({hw.HardwareType})");
+            AppendLhmTempSensors(sb, hw.Sensors);
+            for (int sub = 0; sub < hw.SubHardware.Length; sub++)
+            {
+                var subHw = hw.SubHardware[sub];
+                sb.AppendLine($"    [SubHardware] {subHw.Name} ({subHw.HardwareType})");
+                AppendLhmTempSensors(sb, subHw.Sensors);
+            }
+        }
+    }
+
+    private static void AppendLhmTempSensors(StringBuilder sb, ISensor[] sensors)
+    {
+        for (int s = 0; s < sensors.Length; s++)
+        {
+            if (sensors[s].SensorType == SensorType.Temperature)
+            {
+                string valStr = sensors[s].Value.HasValue ? $"{sensors[s].Value.Value:0.0} °C" : "null";
+                sb.AppendLine($"      TempSensor: {sensors[s].Name} = {valStr}");
+            }
+        }
     }
 
     public Task UpdateAsync(CancellationToken cancellationToken = default)
@@ -123,6 +260,13 @@ public sealed class SystemMonitorModule : IMonitorModule
         if (!IsEnabled || !_initialized)
         {
             return Task.CompletedTask;
+        }
+
+        if (_reinitComputerRequested)
+        {
+            _reinitComputerRequested = false;
+            InitializeComputer();
+            WriteSensorDiagnosticsFile();
         }
 
         try
@@ -173,9 +317,11 @@ public sealed class SystemMonitorModule : IMonitorModule
             _snapshot.CpuLoadPercent = nativeLoad;
         }
 
-        // 2. CPU Temperature (°C) & Clock (MHz) via LibreHardwareMonitorLib
+        // 2. CPU Temperature (°C) & Clock (MHz) via Source 1: LibreHardwareMonitorLib (CPU + Motherboard)
         double? preferredTemp = null;
         double? maxTemp = null;
+        double? motherboardCpuTemp = null;
+        bool hasAnyLhmTempSensor = false;
         double lhmClockSum = 0;
         int lhmClockCount = 0;
         string? lhmError = null;
@@ -186,18 +332,41 @@ public sealed class SystemMonitorModule : IMonitorModule
             {
                 var cpu = _cpuHardware[i];
                 cpu.Update();
-                ReadCpuSensors(cpu.Sensors, ref preferredTemp, ref maxTemp, ref lhmClockSum, ref lhmClockCount);
+                ReadCpuSensors(cpu.Sensors, ref preferredTemp, ref maxTemp, ref hasAnyLhmTempSensor, ref lhmClockSum, ref lhmClockCount);
 
                 for (int sub = 0; sub < cpu.SubHardware.Length; sub++)
                 {
                     var subHardware = cpu.SubHardware[sub];
                     subHardware.Update();
-                    ReadCpuSensors(subHardware.Sensors, ref preferredTemp, ref maxTemp, ref lhmClockSum, ref lhmClockCount);
+                    ReadCpuSensors(subHardware.Sensors, ref preferredTemp, ref maxTemp, ref hasAnyLhmTempSensor, ref lhmClockSum, ref lhmClockCount);
                 }
             }
             catch (Exception ex)
             {
                 lhmError = $"LHM CPU: {ex.Message}";
+            }
+        }
+
+        if (!preferredTemp.HasValue && !maxTemp.HasValue)
+        {
+            for (int i = 0; i < _motherboardHardware.Count; i++)
+            {
+                try
+                {
+                    var mb = _motherboardHardware[i];
+                    mb.Update();
+                    ReadMotherboardCpuTempSensors(mb.Sensors, ref motherboardCpuTemp, ref hasAnyLhmTempSensor);
+
+                    for (int sub = 0; sub < mb.SubHardware.Length; sub++)
+                    {
+                        var subHardware = mb.SubHardware[sub];
+                        subHardware.Update();
+                        ReadMotherboardCpuTempSensors(subHardware.Sensors, ref motherboardCpuTemp, ref hasAnyLhmTempSensor);
+                    }
+                }
+                catch
+                {
+                }
             }
         }
 
@@ -229,20 +398,83 @@ public sealed class SystemMonitorModule : IMonitorModule
             _snapshot.CpuClockIsBaseOnly = false;
         }
 
-        _snapshot.CpuTemperatureC = preferredTemp ?? maxTemp;
-        _snapshot.CpuDiagnosticError = lhmError;
+        double? cpuTemp = preferredTemp ?? maxTemp ?? motherboardCpuTemp;
+        string? activeSource = cpuTemp.HasValue ? "LibreHardwareMonitor" : null;
+        if (!cpuTemp.HasValue)
+        {
+            (cpuTemp, activeSource) = _safeCpuTemperatureFallback.TryReadTemperature();
+        }
+
+        _snapshot.CpuTemperatureC = cpuTemp;
+        if (cpuTemp.HasValue)
+        {
+            _snapshot.CpuTemperatureUnavailableReason = null;
+            _snapshot.CpuDiagnosticError = $"Источник: {activeSource}";
+        }
+        else
+        {
+            string unavailableReason = _activeDisableCpuDriverSetting
+                ? "Отключено в настройках"
+                : (_cpuDriverOpenFailed || !hasAnyLhmTempSensor)
+                    ? "Драйвер заблокирован Windows 11 Memory Integrity (HVCI) / Defender (запустите HWiNFO64 Shared Memory)"
+                    : "Датчик не найден";
+
+            _snapshot.CpuTemperatureUnavailableReason = unavailableReason;
+            _snapshot.CpuDiagnosticError = lhmError ?? unavailableReason;
+        }
+    }
+
+    private static void ReadMotherboardCpuTempSensors(
+        ISensor[] sensors,
+        ref double? motherboardCpuTemp,
+        ref bool hasAnyTempSensor)
+    {
+        for (int s = 0; s < sensors.Length; s++)
+        {
+            var sensor = sensors[s];
+            if (sensor.SensorType != SensorType.Temperature)
+            {
+                continue;
+            }
+
+            if (sensor.Name.Contains("CPU", StringComparison.OrdinalIgnoreCase) ||
+                sensor.Name.Contains("Socket", StringComparison.OrdinalIgnoreCase) ||
+                sensor.Name.Contains("Package", StringComparison.OrdinalIgnoreCase) ||
+                sensor.Name.Contains("Tctl", StringComparison.OrdinalIgnoreCase) ||
+                sensor.Name.Contains("Tdie", StringComparison.OrdinalIgnoreCase) ||
+                sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase))
+            {
+                hasAnyTempSensor = true;
+                if (!sensor.Value.HasValue)
+                {
+                    continue;
+                }
+
+                float val = sensor.Value.Value;
+                if (val is >= 20 and <= 125 && (!motherboardCpuTemp.HasValue || val > motherboardCpuTemp.Value))
+                {
+                    motherboardCpuTemp = val;
+                }
+            }
+        }
     }
 
     private static void ReadCpuSensors(
         ISensor[] sensors,
         ref double? preferredTemp,
         ref double? maxTemp,
+        ref bool hasAnyTempSensor,
         ref double clockSum,
         ref int clockCount)
     {
         for (int s = 0; s < sensors.Length; s++)
         {
             var sensor = sensors[s];
+            if (sensor.SensorType == SensorType.Temperature)
+            {
+                hasAnyTempSensor = true;
+            }
+
             if (!sensor.Value.HasValue)
             {
                 continue;
@@ -250,7 +482,7 @@ public sealed class SystemMonitorModule : IMonitorModule
 
             float val = sensor.Value.Value;
 
-            if (sensor.SensorType == SensorType.Temperature && val is > 0 and < 150)
+            if (sensor.SensorType == SensorType.Temperature && val is >= 20 and <= 125)
             {
                 if (maxTemp is null || val > maxTemp.Value)
                 {
@@ -440,7 +672,9 @@ public sealed class SystemMonitorModule : IMonitorModule
         _snapshot.GpuName = selectedGpu.Name;
 
         double? coreLoad = null;
+        int coreLoadPriority = 0;
         double? coreTemp = null;
+        int coreTempPriority = 0;
         double? vramUsed = null;
         double? vramTotal = null;
 
@@ -454,19 +688,23 @@ public sealed class SystemMonitorModule : IMonitorModule
 
             float val = sensor.Value.Value;
 
-            if (sensor.SensorType == SensorType.Load &&
-                (sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
-                 sensor.Name.Contains("D3D 3D", StringComparison.OrdinalIgnoreCase) ||
-                 coreLoad is null))
+            if (sensor.SensorType == SensorType.Load)
             {
-                coreLoad = val;
+                int priority = GetGpuLoadPriority(sensor.Name);
+                if (priority > coreLoadPriority)
+                {
+                    coreLoad = val;
+                    coreLoadPriority = priority;
+                }
             }
-            else if (sensor.SensorType == SensorType.Temperature &&
-                     (sensor.Name.Contains("Core", StringComparison.OrdinalIgnoreCase) ||
-                      sensor.Name.Contains("GPU", StringComparison.OrdinalIgnoreCase) ||
-                      coreTemp is null))
+            else if (sensor.SensorType == SensorType.Temperature && val is > 0 and < 150)
             {
-                coreTemp = val;
+                int priority = GetGpuTempPriority(sensor.Name);
+                if (priority > coreTempPriority)
+                {
+                    coreTemp = val;
+                    coreTempPriority = priority;
+                }
             }
             else if (sensor.SensorType == SensorType.SmallData)
             {
@@ -485,6 +723,50 @@ public sealed class SystemMonitorModule : IMonitorModule
         _snapshot.GpuTemperatureC = coreTemp;
         _snapshot.GpuVramUsedMb = vramUsed;
         _snapshot.GpuVramTotalMb = vramTotal;
+    }
+
+    private static int GetGpuTempPriority(string sensorName)
+    {
+        bool isSecondary =
+            sensorName.Contains("Hot Spot", StringComparison.OrdinalIgnoreCase) ||
+            sensorName.Contains("Hotspot", StringComparison.OrdinalIgnoreCase) ||
+            sensorName.Contains("Memory", StringComparison.OrdinalIgnoreCase) ||
+            sensorName.Contains("Junction", StringComparison.OrdinalIgnoreCase) ||
+            sensorName.Contains("VR", StringComparison.OrdinalIgnoreCase);
+
+        if (!isSecondary && sensorName.Contains("Core", StringComparison.OrdinalIgnoreCase))
+        {
+            return 4;
+        }
+
+        if (!isSecondary && (string.Equals(sensorName, "GPU", StringComparison.OrdinalIgnoreCase) ||
+                             sensorName.Contains("Edge", StringComparison.OrdinalIgnoreCase)))
+        {
+            return 3;
+        }
+
+        if (!isSecondary)
+        {
+            return 2;
+        }
+
+        return 1;
+    }
+
+    private static int GetGpuLoadPriority(string sensorName)
+    {
+        if (sensorName.Contains("Core", StringComparison.OrdinalIgnoreCase) &&
+            !sensorName.Contains("Memory", StringComparison.OrdinalIgnoreCase))
+        {
+            return 3;
+        }
+
+        if (sensorName.Contains("D3D 3D", StringComparison.OrdinalIgnoreCase))
+        {
+            return 2;
+        }
+
+        return 1;
     }
 
     private void UpdateRamMetrics()
@@ -597,6 +879,8 @@ public sealed class SystemMonitorModule : IMonitorModule
 
     public void Dispose()
     {
+        _settingsService.SettingsChanged -= OnSettingsChanged;
+
         if (_pdhQuery != IntPtr.Zero)
         {
             PdhCloseQuery(_pdhQuery);
@@ -605,6 +889,7 @@ public sealed class SystemMonitorModule : IMonitorModule
             _pdhInitialized = false;
         }
 
+        _safeCpuTemperatureFallback.Dispose();
         _computer?.Close();
         _computer = null;
         _initialized = false;

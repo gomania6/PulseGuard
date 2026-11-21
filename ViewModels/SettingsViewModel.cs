@@ -1,5 +1,8 @@
+using System.Windows;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PulseGuard.Modules.Discord;
+using PulseGuard.Modules.Discord.Models;
 using PulseGuard.Modules.Monitoring;
 using PulseGuard.Modules.Overlay;
 using PulseGuard.Modules.Settings;
@@ -10,6 +13,7 @@ namespace PulseGuard.ViewModels;
 public sealed record PollingIntervalOption(int IntervalMs, string DisplayText);
 public sealed record OverlayCornerOption(OverlayCorner Corner, string DisplayText);
 public sealed record OverlayLayoutOption(OverlayLayoutMode Mode, string DisplayText);
+public sealed record NotificationProfileOption(NotificationProfile Profile, string DisplayText);
 
 public partial class SettingsViewModel : ObservableObject
 {
@@ -17,6 +21,7 @@ public partial class SettingsViewModel : ObservableObject
     private readonly StartupTaskSchedulerService _startupTaskScheduler;
     private readonly MonitoringPollingService _monitoringPollingService;
     private readonly OverlayService _overlayService;
+    private readonly DiscordRpcModule _discordRpcModule;
 
     private bool _isSyncing;
 
@@ -39,6 +44,9 @@ public partial class SettingsViewModel : ObservableObject
     private bool _pauseChartsWhenMinimized = true;
 
     [ObservableProperty]
+    private bool _disableCpuKernelDriver;
+
+    [ObservableProperty]
     private double _cpuGpuTempThresholdC = AppSettings.DefaultCpuGpuTempThresholdC;
 
     [ObservableProperty]
@@ -48,7 +56,21 @@ public partial class SettingsViewModel : ObservableObject
     private bool _showThresholdNotifications = true;
 
     [ObservableProperty]
+    private NotificationProfileOption _selectedNotificationProfile;
+
+    public IReadOnlyList<NotificationProfileOption> NotificationProfileOptions { get; } =
+    [
+        new(NotificationProfile.Standard, "Стандартный (уведомления и лог)"),
+        new(NotificationProfile.Silent, "Тихий (только запись в лог пиков)"),
+        new(NotificationProfile.GamingFocus, "Игровой (не беспокоить в играх)"),
+        new(NotificationProfile.Strict, "Строгий (максимальные уведомления)")
+    ];
+
+    [ObservableProperty]
     private bool _isOverlayEnabled;
+
+    [ObservableProperty]
+    private bool _isOverlayClickThrough = true;
 
     [ObservableProperty]
     private double _overlayOpacityPercent = AppSettings.DefaultOverlayOpacityPercent;
@@ -87,6 +109,17 @@ public partial class SettingsViewModel : ObservableObject
     private bool _overlayShowVpn = true;
 
     [ObservableProperty]
+    private bool _overlayShowInputLayout = true;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(BreakReminderDisplayText))]
+    private int _breakReminderMinutes = 90;
+
+    public string BreakReminderDisplayText => BreakReminderMinutes <= 0
+        ? "Выключено"
+        : $"{BreakReminderMinutes} мин ({Modules.Playtime.PlaytimeTrackerModule.FormatDurationRussian(TimeSpan.FromMinutes(BreakReminderMinutes))})";
+
+    [ObservableProperty]
     private string _vpnExecutablePath = string.Empty;
 
     [ObservableProperty]
@@ -94,6 +127,36 @@ public partial class SettingsViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _vpnStartMinimized = true;
+
+    [ObservableProperty]
+    private string _discordClientId = string.Empty;
+
+    [ObservableProperty]
+    private string _discordClientSecret = string.Empty;
+
+    [ObservableProperty]
+    private bool _isDiscordOverlayEnabled = true;
+
+    [ObservableProperty]
+    private bool _isGlobalHotkeysEnabled = true;
+
+    [ObservableProperty]
+    private string _toggleWindowHotkey = "Ctrl + Alt + P";
+
+    public IReadOnlyList<string> ToggleWindowHotkeyOptions { get; } =
+    [
+        "Ctrl + Alt + P",
+        "Ctrl + Alt + M",
+        "Ctrl + Shift + P",
+        "Alt + Shift + Home",
+        "Отключено"
+    ];
+
+    [ObservableProperty]
+    private string _discordConnectionStatus = "Не подключено";
+
+    [ObservableProperty]
+    private bool _isDiscordAuthorizing;
 
     [ObservableProperty]
     private string _statusMessage = string.Empty;
@@ -127,20 +190,35 @@ public partial class SettingsViewModel : ObservableObject
         SettingsService settingsService,
         StartupTaskSchedulerService startupTaskScheduler,
         MonitoringPollingService monitoringPollingService,
-        OverlayService overlayService)
+        OverlayService overlayService,
+        DiscordRpcModule discordRpcModule)
     {
         _settingsService = settingsService;
         _startupTaskScheduler = startupTaskScheduler;
         _monitoringPollingService = monitoringPollingService;
         _overlayService = overlayService;
+        _discordRpcModule = discordRpcModule;
 
         _selectedPollingOption = PollingIntervalOptions[1];
         _selectedOverlayCorner = OverlayCornerOptions[1];
         _selectedOverlayLayout = OverlayLayoutOptions[0];
+        _selectedNotificationProfile = NotificationProfileOptions[0];
         LoadFromSettings(_settingsService.Current);
+        DiscordConnectionStatus = _discordRpcModule.CurrentSnapshot.StatusMessage;
 
         _overlayService.VisibilityChanged += OnOverlayVisibilityChanged;
         _settingsService.SettingsChanged += OnSettingsChanged;
+        _discordRpcModule.SnapshotChanged += OnDiscordSnapshotChanged;
+    }
+
+    private void OnDiscordSnapshotChanged(DiscordVoiceSnapshot snapshot)
+    {
+        Application.Current?.Dispatcher.BeginInvoke(() =>
+        {
+            DiscordConnectionStatus = snapshot.IsInVoiceChannel
+                ? $"В канале: {snapshot.ChannelName}"
+                : snapshot.StatusMessage;
+        });
     }
 
     private void OnSettingsChanged(AppSettings settings)
@@ -155,6 +233,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             SelectedOverlayCorner = OverlayCornerOptions.FirstOrDefault(o => o.Corner == settings.OverlayPosition)
                                     ?? OverlayCornerOptions[1];
+            IsOverlayClickThrough = settings.IsOverlayClickThrough;
         }
         finally
         {
@@ -191,10 +270,14 @@ public partial class SettingsViewModel : ObservableObject
             SelectedPollingOption = PollingIntervalOptions.FirstOrDefault(o => o.IntervalMs == settings.PollingIntervalMs)
                                     ?? PollingIntervalOptions[1];
             PauseChartsWhenMinimized = settings.PauseChartsWhenMinimized;
+            DisableCpuKernelDriver = settings.DisableCpuKernelDriver;
             CpuGpuTempThresholdC = settings.CpuGpuTempThresholdC;
             RamThresholdPercent = settings.RamThresholdPercent;
             ShowThresholdNotifications = settings.ShowThresholdNotifications;
+            SelectedNotificationProfile = NotificationProfileOptions.FirstOrDefault(o => o.Profile == settings.NotificationProfile)
+                                          ?? NotificationProfileOptions[0];
             IsOverlayEnabled = _overlayService.IsVisible;
+            IsOverlayClickThrough = settings.IsOverlayClickThrough;
             OverlayOpacityPercent = settings.OverlayOpacityPercent;
             SelectedOverlayCorner = OverlayCornerOptions.FirstOrDefault(o => o.Corner == settings.OverlayPosition)
                                     ?? OverlayCornerOptions[1];
@@ -209,9 +292,18 @@ public partial class SettingsViewModel : ObservableObject
             OverlayShowIcons = settings.OverlayShowIcons;
             OverlayShowHoverButtons = settings.OverlayShowHoverButtons;
             OverlayShowVpn = settings.OverlayShowVpn;
+            OverlayShowInputLayout = settings.OverlayShowInputLayout;
+            BreakReminderMinutes = settings.BreakReminderMinutes;
             VpnExecutablePath = settings.VpnExecutablePath;
             VpnAutoStart = settings.VpnAutoStart;
             VpnStartMinimized = settings.VpnStartMinimized;
+            DiscordClientId = settings.DiscordClientId;
+            DiscordClientSecret = settings.DiscordClientSecret;
+            IsDiscordOverlayEnabled = settings.IsDiscordOverlayEnabled;
+            IsGlobalHotkeysEnabled = settings.IsGlobalHotkeysEnabled;
+            ToggleWindowHotkey = string.IsNullOrWhiteSpace(settings.ToggleWindowHotkey)
+                ? "Ctrl + Alt + P"
+                : settings.ToggleWindowHotkey;
         }
         finally
         {
@@ -299,6 +391,19 @@ public partial class SettingsViewModel : ObservableObject
             : "Мониторинг продолжится даже при сворачивании в трей.";
     }
 
+    partial void OnDisableCpuKernelDriverChanged(bool value)
+    {
+        if (_isSyncing)
+        {
+            return;
+        }
+
+        _settingsService.Update(s => s.DisableCpuKernelDriver = value);
+        StatusMessage = value
+            ? "Режим совместимости CPU включён (драйвер датчиков отключён)."
+            : "Драйвер датчиков CPU включён.";
+    }
+
     partial void OnCpuGpuTempThresholdCChanged(double value)
     {
         if (_isSyncing)
@@ -334,6 +439,17 @@ public partial class SettingsViewModel : ObservableObject
             : "Всплывающие уведомления в трее отключены.";
     }
 
+    partial void OnSelectedNotificationProfileChanged(NotificationProfileOption value)
+    {
+        if (_isSyncing || value is null)
+        {
+            return;
+        }
+
+        _settingsService.Update(s => s.NotificationProfile = value.Profile);
+        StatusMessage = $"Профиль уведомлений: {value.DisplayText}";
+    }
+
     partial void OnIsOverlayEnabledChanged(bool value)
     {
         if (_isSyncing)
@@ -345,6 +461,19 @@ public partial class SettingsViewModel : ObservableObject
         StatusMessage = value
             ? "Компактный мини-виджет включён."
             : "Компактный мини-виджет скрыт.";
+    }
+
+    partial void OnIsOverlayClickThroughChanged(bool value)
+    {
+        if (_isSyncing)
+        {
+            return;
+        }
+
+        _settingsService.Update(s => s.IsOverlayClickThrough = value);
+        StatusMessage = value
+            ? "Оверлей прозрачен для кликов (удерживайте Alt для перетаскивания)."
+            : "Оверлей принимает клики мыши.";
     }
 
     partial void OnOverlayOpacityPercentChanged(double value)
@@ -441,6 +570,19 @@ public partial class SettingsViewModel : ObservableObject
         _settingsService.Update(s => s.OverlayShowVpn = value);
     }
 
+    partial void OnOverlayShowInputLayoutChanged(bool value)
+    {
+        if (_isSyncing) return;
+        _settingsService.Update(s => s.OverlayShowInputLayout = value);
+    }
+
+    partial void OnBreakReminderMinutesChanged(int value)
+    {
+        if (_isSyncing) return;
+        int clamped = Math.Clamp(value, 0, 480);
+        _settingsService.Update(s => s.BreakReminderMinutes = clamped);
+    }
+
     partial void OnVpnExecutablePathChanged(string value)
     {
         if (_isSyncing) return;
@@ -464,6 +606,68 @@ public partial class SettingsViewModel : ObservableObject
     {
         if (_isSyncing) return;
         _settingsService.Update(s => s.VpnStartMinimized = value);
+    }
+
+    partial void OnDiscordClientIdChanged(string value)
+    {
+        if (_isSyncing) return;
+        string trimmed = value?.Trim() ?? string.Empty;
+        _settingsService.Update(s => s.DiscordClientId = trimmed);
+    }
+
+    partial void OnDiscordClientSecretChanged(string value)
+    {
+        if (_isSyncing) return;
+        string trimmed = value?.Trim() ?? string.Empty;
+        _settingsService.Update(s => s.DiscordClientSecret = trimmed);
+    }
+
+    partial void OnIsDiscordOverlayEnabledChanged(bool value)
+    {
+        if (_isSyncing) return;
+        _settingsService.Update(s => s.IsDiscordOverlayEnabled = value);
+        StatusMessage = value
+            ? "Отображение голосового канала Discord в оверлее включено."
+            : "Интеграция с Discord в оверлее отключена.";
+    }
+
+    partial void OnIsGlobalHotkeysEnabledChanged(bool value)
+    {
+        if (_isSyncing) return;
+        _settingsService.Update(s => s.IsGlobalHotkeysEnabled = value);
+        StatusMessage = value
+            ? "Глобальные горячие клавиши включены."
+            : "Глобальные горячие клавиши отключены.";
+    }
+
+    partial void OnToggleWindowHotkeyChanged(string value)
+    {
+        if (_isSyncing) return;
+        string normalized = string.IsNullOrWhiteSpace(value) ? "Ctrl + Alt + P" : value.Trim();
+        _settingsService.Update(s => s.ToggleWindowHotkey = normalized);
+        StatusMessage = normalized == "Отключено"
+            ? "Дополнительный хоткей главного окна отключён (Alt + Home остаётся активен)."
+            : $"Хоткей главного окна обновлён: {normalized}";
+    }
+
+    [RelayCommand]
+    private async Task ConnectDiscordAsync()
+    {
+        if (IsDiscordAuthorizing)
+        {
+            return;
+        }
+
+        IsDiscordAuthorizing = true;
+        try
+        {
+            var (_, message) = await _discordRpcModule.AuthorizeAsync();
+            StatusMessage = message;
+        }
+        finally
+        {
+            IsDiscordAuthorizing = false;
+        }
     }
 
     [RelayCommand]

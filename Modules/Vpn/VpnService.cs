@@ -16,10 +16,14 @@ namespace PulseGuard.Modules.Vpn;
 /// </summary>
 public sealed class VpnService : IMonitorModule
 {
-    private const string PingTargetHost = "1.1.1.1";
-    private const int PingTimeoutMs = 1500;
+    private const string DefaultPingTargetHost = "1.1.1.1";
+    private static readonly string[] PingCandidateHosts = ["1.1.1.1", "8.8.8.8", "9.9.9.9", "77.88.8.8"];
+    private const int PingTimeoutMs = 800;
+    private const int PingWindowSize = 30;
     private const double PingFailureErrorThresholdSeconds = 10.0;
-    private const int PollIntervalMs = 2500;
+    private const int PollIntervalMs = 1000;
+
+    private static readonly byte[] PingBuffer = new byte[32];
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -29,12 +33,16 @@ public sealed class VpnService : IMonitorModule
     private readonly SettingsService _settingsService;
     private readonly string _statusFilePath;
     private readonly Ping _ping = new();
+    private readonly Queue<long?> _pingWindow = new(PingWindowSize);
+    private readonly object _windowLock = new();
     private readonly CancellationTokenSource _disposeCts = new();
     private readonly SemaphoreSlim _refreshLock = new(1, 1);
 
     private FileSystemWatcher? _watcher;
     private Task? _pollingTask;
     private DateTime? _firstPingFailureUtc;
+    private string _activePingHost = DefaultPingTargetHost;
+    private VpnConnectionState? _lastStateForServerSelection;
     private bool _disposed;
 
     public string Id => "vpn-monitor";
@@ -58,11 +66,57 @@ public sealed class VpnService : IMonitorModule
         _settingsService.SettingsChanged += OnSettingsChanged;
     }
 
-    public Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        await RefreshNearestServerAsync(cancellationToken).ConfigureAwait(false);
         StartFileWatcher();
         StartBackgroundPolling();
-        return UpdateAsync(cancellationToken);
+        await UpdateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Probes known low-latency Anycast/DNS servers in parallel and selects the closest one
+    /// for ongoing Ping/Jitter/Loss monitoring.
+    /// </summary>
+    public async Task<string> RefreshNearestServerAsync(CancellationToken cancellationToken = default)
+    {
+        var probeTasks = PingCandidateHosts.Select(async host =>
+        {
+            try
+            {
+                using var probe = new Ping();
+                var reply = await probe.SendPingAsync(host, PingTimeoutMs, PingBuffer).ConfigureAwait(false);
+                long? rtt = reply.Status == IPStatus.Success ? reply.RoundtripTime : null;
+                return (Host: host, Rtt: rtt);
+            }
+            catch
+            {
+                return (Host: host, Rtt: (long?)null);
+            }
+        });
+
+        var results = await Task.WhenAll(probeTasks).ConfigureAwait(false);
+        string bestHost = results
+            .Where(r => r.Rtt.HasValue)
+            .OrderBy(r => r.Rtt!.Value)
+            .Select(r => r.Host)
+            .FirstOrDefault() ?? DefaultPingTargetHost;
+
+        if (!string.Equals(_activePingHost, bestHost, StringComparison.Ordinal))
+        {
+            _activePingHost = bestHost;
+            lock (_windowLock)
+            {
+                _pingWindow.Clear();
+            }
+        }
+
+        return _activePingHost;
     }
 
     public async Task UpdateAsync(CancellationToken cancellationToken = default)
@@ -102,7 +156,8 @@ public sealed class VpnService : IMonitorModule
 
             VpnConnectionState state;
             string statusText;
-            long? pingMs = null;
+            long? pingMs = await MeasurePingAsync().ConfigureAwait(false);
+            var (lossPercent, jitterMs, quality) = RecordAndComputeQuality(pingMs);
 
             if (!isProcessRunning || fileState == "disconnected")
             {
@@ -118,9 +173,6 @@ public sealed class VpnService : IMonitorModule
             }
             else
             {
-                // Process is running and not explicitly disconnected: verify tunnel with real ping to 1.1.1.1
-                pingMs = await MeasurePingAsync().ConfigureAwait(false);
-
                 if (pingMs.HasValue)
                 {
                     _firstPingFailureUtc = null;
@@ -151,8 +203,22 @@ public sealed class VpnService : IMonitorModule
                 serverName,
                 externalIp,
                 pingMs,
+                lossPercent,
+                jitterMs,
+                quality,
                 isProcessRunning,
-                isConfigured);
+                isConfigured,
+                _activePingHost);
+
+            if (_lastStateForServerSelection.HasValue && _lastStateForServerSelection.Value != state)
+            {
+                _lastStateForServerSelection = state;
+                _ = RefreshNearestServerAsync(_disposeCts.Token);
+            }
+            else
+            {
+                _lastStateForServerSelection ??= state;
+            }
 
             if (next != CurrentStatus)
             {
@@ -182,10 +248,10 @@ public sealed class VpnService : IMonitorModule
         }
 
         string processName = Path.GetFileNameWithoutExtension(exePath);
-        if (IsProcessAlive(processName))
+        if (IsProcessAlive(processName) && CurrentStatus.State == VpnConnectionState.Connected)
         {
             await UpdateAsync(_disposeCts.Token).ConfigureAwait(false);
-            return (true, "VPN-клиент уже запущен.");
+            return (true, "VPN-клиент уже подключён.");
         }
 
         try
@@ -231,25 +297,56 @@ public sealed class VpnService : IMonitorModule
 
         try
         {
-            var processes = Process.GetProcessesByName(processName);
-            if (processes.Length == 0)
+            if (File.Exists(exePath))
             {
-                await UpdateAsync(_disposeCts.Token).ConfigureAwait(false);
-                return (true, "VPN-клиент уже остановлен.");
+                try
+                {
+                    using var disconnectCmd = Process.Start(new ProcessStartInfo
+                    {
+                        FileName = exePath,
+                        Arguments = "--disconnect",
+                        WorkingDirectory = Path.GetDirectoryName(exePath) ?? string.Empty,
+                        UseShellExecute = true,
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    });
+
+                    await Task.Delay(1200).ConfigureAwait(false);
+                }
+                catch
+                {
+                    // Ignore if client does not support --disconnect CLI argument.
+                }
             }
 
+            var processes = Process.GetProcessesByName(processName);
+            if (processes.Length == 0 || string.Equals(ReadStatusFile()?.State?.Trim(), "disconnected", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (var proc in processes)
+                {
+                    proc.Dispose();
+                }
+
+                _firstPingFailureUtc = null;
+                await UpdateAsync(_disposeCts.Token).ConfigureAwait(false);
+                return (true, "VPN-клиент отключён.");
+            }
+
+            bool anyStillRunning = false;
             foreach (var proc in processes)
             {
                 try
                 {
                     if (!proc.HasExited)
                     {
-                        proc.CloseMainWindow();
-                        if (!proc.WaitForExit(1500))
+                        bool sent = proc.CloseMainWindow();
+                        if (!sent || proc.MainWindowHandle == IntPtr.Zero)
                         {
-                            // Explicit user-requested VPN stop when tray-only client ignores WM_CLOSE.
-                            proc.Kill();
-                            proc.WaitForExit(1000);
+                            VpnNativeMethods.PostCloseToProcessWindows(proc.Id);
+                        }
+
+                        if (!proc.WaitForExit(2500))
+                        {
+                            anyStillRunning = true;
                         }
                     }
                 }
@@ -263,9 +360,13 @@ public sealed class VpnService : IMonitorModule
                 }
             }
 
+            bool isDisconnectedByFile = string.Equals(ReadStatusFile()?.State?.Trim(), "disconnected", StringComparison.OrdinalIgnoreCase);
             _firstPingFailureUtc = null;
             await UpdateAsync(_disposeCts.Token).ConfigureAwait(false);
-            return (true, "VPN-клиент отключён.");
+
+            return anyStillRunning && !isDisconnectedByFile
+                ? (false, "VPN-клиент остался в трее и не закрылся. Отключите его вручную через иконку в трее.")
+                : (true, "VPN-клиент отключён.");
         }
         catch (Exception ex)
         {
@@ -282,7 +383,7 @@ public sealed class VpnService : IMonitorModule
 
     public Task<(bool Success, string Message)> ToggleAsync()
     {
-        return CurrentStatus.IsProcessRunning ? DisconnectAsync() : ConnectAsync();
+        return CurrentStatus.State != VpnConnectionState.Disconnected ? DisconnectAsync() : ConnectAsync();
     }
 
     private void OnSettingsChanged(AppSettings settings)
@@ -372,11 +473,72 @@ public sealed class VpnService : IMonitorModule
         }
     }
 
+    private (double LossPercent, double JitterMs, ConnectionQuality Quality) RecordAndComputeQuality(long? latestPingMs)
+    {
+        lock (_windowLock)
+        {
+            if (_pingWindow.Count >= PingWindowSize)
+            {
+                _pingWindow.Dequeue();
+            }
+
+            _pingWindow.Enqueue(latestPingMs);
+
+            int total = _pingWindow.Count;
+            if (total == 0)
+            {
+                return (0, 0, ConnectionQuality.Good);
+            }
+
+            int failed = 0;
+            long? prevSuccess = null;
+            long jitterSum = 0;
+            int jitterPairs = 0;
+
+            foreach (long? sample in _pingWindow)
+            {
+                if (!sample.HasValue)
+                {
+                    failed++;
+                    prevSuccess = null;
+                    continue;
+                }
+
+                if (prevSuccess.HasValue)
+                {
+                    jitterSum += Math.Abs(sample.Value - prevSuccess.Value);
+                    jitterPairs++;
+                }
+
+                prevSuccess = sample.Value;
+            }
+
+            double lossPercent = Math.Round((failed * 100.0) / total, 0);
+            double jitterMs = jitterPairs > 0 ? Math.Round((double)jitterSum / jitterPairs, 1) : 0;
+
+            ConnectionQuality quality;
+            if (lossPercent > 15.0 || (latestPingMs.HasValue && latestPingMs.Value > 150))
+            {
+                quality = ConnectionQuality.Bad;
+            }
+            else if (lossPercent >= 5.0 || jitterMs >= 20.0 || lossPercent > 0.0 || jitterMs >= 15.0)
+            {
+                quality = ConnectionQuality.Warning;
+            }
+            else
+            {
+                quality = ConnectionQuality.Good;
+            }
+
+            return (lossPercent, jitterMs, quality);
+        }
+    }
+
     private async Task<long?> MeasurePingAsync()
     {
         try
         {
-            PingReply reply = await _ping.SendPingAsync(PingTargetHost, PingTimeoutMs).ConfigureAwait(false);
+            PingReply reply = await _ping.SendPingAsync(_activePingHost, PingTimeoutMs, PingBuffer).ConfigureAwait(false);
             return reply.Status == IPStatus.Success ? reply.RoundtripTime : null;
         }
         catch

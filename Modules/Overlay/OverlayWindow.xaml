@@ -38,7 +38,8 @@
             </Style>
         </Border.Style>
 
-        <StackPanel Orientation="{Binding ViewModel.LayoutOrientation}" VerticalAlignment="Center">
+        <StackPanel Orientation="Vertical">
+            <StackPanel Orientation="{Binding ViewModel.LayoutOrientation}" VerticalAlignment="Center">
             <!-- CPU -->
             <StackPanel
                 Orientation="Horizontal"
@@ -143,6 +144,7 @@
             <StackPanel
                 Orientation="Horizontal"
                 VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
                 Visibility="{Binding ViewModel.ShowVpn, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <Ellipse
                     Width="8"
@@ -157,6 +159,144 @@
                     Foreground="White"
                     Text="{Binding ViewModel.VpnText}" />
             </StackPanel>
+
+            <!-- Input Keyboard Layout Badge -->
+            <Border
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Padding="6,2"
+                CornerRadius="6"
+                BorderThickness="1"
+                Visibility="{Binding ViewModel.ShowInputLayout, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <Border.Style>
+                    <Style TargetType="Border">
+                        <Setter Property="Background" Value="#1AFFFFFF" />
+                        <Setter Property="BorderBrush" Value="#26FFFFFF" />
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding ViewModel.IsInputLayoutHighlighted}" Value="True">
+                                <Setter Property="Background" Value="#CC00B2FF" />
+                                <Setter Property="BorderBrush" Value="#FF00E5A0" />
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </Border.Style>
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    FontWeight="Bold"
+                    Foreground="White"
+                    Text="{Binding ViewModel.InputLayoutText}" />
+            </Border>
+
+            <!-- Game Mode Session -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Visibility="{Binding ViewModel.IsGameModeActive, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ui:SymbolIcon
+                    Margin="0,0,4,0"
+                    FontSize="14"
+                    Foreground="{Binding ViewModel.SessionTimerBrush}"
+                    Symbol="Games20" />
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{Binding ViewModel.SessionTimerBrush}"
+                    Text="{Binding ViewModel.GameSessionText}" />
+            </StackPanel>
+
+            <!-- PC Session Break Reminder Timer (when not in Game Mode) -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Visibility="{Binding ViewModel.ShowPcSessionTimer, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="{Binding ViewModel.SessionTimerBrush}"
+                    Text="{Binding ViewModel.PcSessionText}" />
+            </StackPanel>
+
+            <!-- Transient Hotkey Status (e.g., Quick RAM Clean) -->
+            <StackPanel
+                Orientation="Horizontal"
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Visibility="{Binding ViewModel.HasTransientStatus, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="12"
+                    FontWeight="SemiBold"
+                    Foreground="#00E5A0"
+                    Text="{Binding ViewModel.TransientStatusText}" />
+            </StackPanel>
+
+            <!-- Transient Stutter Alert (3 seconds if stutter occurred within last 10s) -->
+            <Border
+                VerticalAlignment="Center"
+                Margin="{Binding ViewModel.ItemMargin}"
+                Padding="6,2"
+                Background="#44FFB900"
+                BorderBrush="#FFFFB900"
+                BorderThickness="1"
+                CornerRadius="6"
+                Visibility="{Binding ViewModel.ShowStutterAlert, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <TextBlock
+                    VerticalAlignment="Center"
+                    FontSize="11"
+                    FontWeight="Bold"
+                    Foreground="#FFFFD166"
+                    Text="{Binding ViewModel.StutterAlertText}" />
+            </Border>
+
+            <!-- Pinned Battery Devices -->
+            <ItemsControl
+                ItemsSource="{Binding ViewModel.PinnedBatteryDevices}"
+                Visibility="{Binding ViewModel.HasPinnedBatteryDevices, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="{Binding ViewModel.LayoutOrientation}" VerticalAlignment="Center" />
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            Margin="{Binding DataContext.ViewModel.ItemMargin, RelativeSource={RelativeSource AncestorType=Window}}"
+                            ToolTip="{Binding TooltipText}">
+                            <Ellipse
+                                Width="6"
+                                Height="6"
+                                Margin="0,0,4,0"
+                                VerticalAlignment="Center"
+                                Fill="{Binding StatusDotBrush}" />
+                            <ui:SymbolIcon
+                                Margin="0,0,4,0"
+                                FontSize="13"
+                                Foreground="{Binding TextBrush}"
+                                Symbol="{Binding DeviceIcon}" />
+                            <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="12"
+                                FontWeight="SemiBold"
+                                Foreground="{Binding TextBrush}"
+                                Text="{Binding PercentText}" />
+                            <TextBlock
+                                Margin="3,0,0,0"
+                                VerticalAlignment="Center"
+                                FontSize="10"
+                                Foreground="#99FFFFFF"
+                                Text="💤"
+                                Visibility="{Binding IsSleeping, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
             <!-- Fallback if all metrics are disabled -->
             <TextBlock
@@ -234,6 +374,179 @@
                     <ui:SymbolIcon FontSize="13" Foreground="#CCFFFFFF" Symbol="Dismiss16" />
                 </ui:Button>
             </StackPanel>
+            </StackPanel>
+
+            <!-- Discord Voice Channel & Participants -->
+            <Border
+                Margin="0,6,0,0"
+                Padding="0,6,0,0"
+                BorderBrush="#22FFFFFF"
+                BorderThickness="0,1,0,0"
+                Visibility="{Binding ViewModel.ShowDiscordVoice, Converter={StaticResource BooleanToVisibilityConverter}}">
+                <StackPanel Orientation="Vertical">
+                    <TextBlock
+                        Margin="0,0,0,4"
+                        FontSize="12"
+                        FontWeight="SemiBold"
+                        Foreground="#E6FFFFFF"
+                        Text="{Binding ViewModel.DiscordChannelText}" />
+
+                    <ItemsControl ItemsSource="{Binding ViewModel.DiscordParticipants}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Vertical" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border
+                                    CornerRadius="6"
+                                    Padding="4,2"
+                                    Margin="0,1,0,1"
+                                    RenderTransformOrigin="0.5,0.5">
+                                    <Border.Background>
+                                        <SolidColorBrush Color="#00000000" />
+                                    </Border.Background>
+                                    <Border.RenderTransform>
+                                        <TranslateTransform X="0" Y="0" />
+                                    </Border.RenderTransform>
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsJoining}" Value="True">
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetProperty="Opacity"
+                                                                    From="0"
+                                                                    To="1"
+                                                                    Duration="0:0:0.22">
+                                                                    <DoubleAnimation.EasingFunction>
+                                                                        <CubicEase EasingMode="EaseOut" />
+                                                                    </DoubleAnimation.EasingFunction>
+                                                                </DoubleAnimation>
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                                                                    From="-12"
+                                                                    To="0"
+                                                                    Duration="0:0:0.22">
+                                                                    <DoubleAnimation.EasingFunction>
+                                                                        <CubicEase EasingMode="EaseOut" />
+                                                                    </DoubleAnimation.EasingFunction>
+                                                                </DoubleAnimation>
+                                                                <ColorAnimationUsingKeyFrames Storyboard.TargetProperty="Background.(SolidColorBrush.Color)">
+                                                                    <DiscreteColorKeyFrame KeyTime="0:0:0" Value="#4400E5A0" />
+                                                                    <LinearColorKeyFrame KeyTime="0:0:0.9" Value="#2600E5A0" />
+                                                                    <LinearColorKeyFrame KeyTime="0:0:1.2" Value="#00000000" />
+                                                                </ColorAnimationUsingKeyFrames>
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding IsLeaving}" Value="True">
+                                                    <DataTrigger.EnterActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <ColorAnimationUsingKeyFrames Storyboard.TargetProperty="Background.(SolidColorBrush.Color)">
+                                                                    <DiscreteColorKeyFrame KeyTime="0:0:0" Value="#44FF5C5C" />
+                                                                    <LinearColorKeyFrame KeyTime="0:0:0.4" Value="#33FF5C5C" />
+                                                                </ColorAnimationUsingKeyFrames>
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetProperty="Opacity"
+                                                                    BeginTime="0:0:0.4"
+                                                                    From="1"
+                                                                    To="0"
+                                                                    Duration="0:0:0.22">
+                                                                    <DoubleAnimation.EasingFunction>
+                                                                        <CubicEase EasingMode="EaseIn" />
+                                                                    </DoubleAnimation.EasingFunction>
+                                                                </DoubleAnimation>
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                                                                    BeginTime="0:0:0.4"
+                                                                    From="0"
+                                                                    To="10"
+                                                                    Duration="0:0:0.22" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.EnterActions>
+                                                    <DataTrigger.ExitActions>
+                                                        <BeginStoryboard>
+                                                            <Storyboard>
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetProperty="Opacity"
+                                                                    To="1"
+                                                                    Duration="0:0:0.1" />
+                                                                <DoubleAnimation
+                                                                    Storyboard.TargetProperty="RenderTransform.(TranslateTransform.X)"
+                                                                    To="0"
+                                                                    Duration="0:0:0.1" />
+                                                                <ColorAnimation
+                                                                    Storyboard.TargetProperty="Background.(SolidColorBrush.Color)"
+                                                                    To="#00000000"
+                                                                    Duration="0:0:0.1" />
+                                                            </Storyboard>
+                                                        </BeginStoryboard>
+                                                    </DataTrigger.ExitActions>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                    <StackPanel
+                                        Orientation="Horizontal"
+                                        VerticalAlignment="Center">
+                                        <Ellipse
+                                            Width="7"
+                                            Height="7"
+                                            Margin="0,0,6,0"
+                                            VerticalAlignment="Center"
+                                            Fill="{Binding IndicatorBrush}" />
+                                        <TextBlock
+                                            VerticalAlignment="Center"
+                                            FontSize="11.5"
+                                            FontWeight="Medium"
+                                            Foreground="{Binding NameBrush}"
+                                            Text="{Binding DisplayName}" />
+                                        <ui:SymbolIcon
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="#FF5C5C"
+                                            Symbol="MicOff16"
+                                            ToolTip="Микрофон выключен"
+                                            Visibility="{Binding IsMutedOnly, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <ui:SymbolIcon
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="#FF5C5C"
+                                            Symbol="Headphones20"
+                                            ToolTip="Звук выключен"
+                                            Visibility="{Binding IsDeafened, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <ui:SymbolIcon
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="#A78BFA"
+                                            Symbol="Desktop16"
+                                            ToolTip="Демонстрация экрана"
+                                            Visibility="{Binding IsStreaming, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <ui:SymbolIcon
+                                            Margin="6,0,0,0"
+                                            VerticalAlignment="Center"
+                                            FontSize="12"
+                                            Foreground="#38BDF8"
+                                            Symbol="Video16"
+                                            ToolTip="Камера включена"
+                                            Visibility="{Binding IsVideoOn, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
         </StackPanel>
     </Border>
 </Window>

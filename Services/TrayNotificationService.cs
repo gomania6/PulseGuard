@@ -23,7 +23,13 @@ public sealed class TrayNotificationService
         _notifyIcon = notifyIcon;
     }
 
-    public bool TryShowWarningBalloon(string title, string message)
+    public bool TryShowWarningBalloon(string title, string message) =>
+        TryShowBalloon(title, message, NiifWarning);
+
+    public bool TryShowInfoBalloon(string title, string message) =>
+        TryShowBalloon(title, message, NiifInfo);
+
+    private bool TryShowBalloon(string title, string message, uint infoFlags)
     {
         lock (_rateLimitLock)
         {
@@ -42,11 +48,11 @@ public sealed class TrayNotificationService
             return false;
         }
 
-        dispatcher.BeginInvoke(() => ShowBalloonOnUiThread(title, message));
+        dispatcher.BeginInvoke(() => ShowBalloonOnUiThread(title, message, infoFlags));
         return true;
     }
 
-    private void ShowBalloonOnUiThread(string title, string message)
+    private void ShowBalloonOnUiThread(string title, string message, uint infoFlags)
     {
         try
         {
@@ -85,7 +91,7 @@ public sealed class TrayNotificationService
                 hWnd = hWnd,
                 uID = uId,
                 uFlags = NifInfo,
-                dwInfoFlags = NiifWarning,
+                dwInfoFlags = infoFlags,
                 szInfoTitle = Truncate(title, 63),
                 szInfo = Truncate(message, 255)
             };
@@ -103,6 +109,7 @@ public sealed class TrayNotificationService
 
     private const uint NimModify = 0x00000001;
     private const uint NifInfo = 0x00000010;
+    private const uint NiifInfo = 0x00000001;
     private const uint NiifWarning = 0x00000002;
 
     [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]

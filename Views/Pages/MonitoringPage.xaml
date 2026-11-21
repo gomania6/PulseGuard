@@ -25,6 +25,9 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <!-- Header -->
@@ -198,103 +201,248 @@
                             FontWeight="SemiBold"
                             Foreground="#FFA600"
                             Text="{Binding ViewModel.NetworkUploadText}" />
+
+                        <Grid Margin="0,8,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock
+                                    FontSize="10"
+                                    Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="Loss" />
+                                <TextBlock
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="{Binding ViewModel.NetworkQualityBrush}"
+                                    Text="{Binding ViewModel.NetworkPacketLossText}" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <TextBlock
+                                    FontSize="10"
+                                    Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                    Text="Jitter" />
+                                <TextBlock
+                                    FontSize="12"
+                                    FontWeight="SemiBold"
+                                    Foreground="{Binding ViewModel.NetworkQualityBrush}"
+                                    Text="{Binding ViewModel.NetworkJitterText}" />
+                            </StackPanel>
+                        </Grid>
                     </StackPanel>
                 </ui:Card>
             </UniformGrid>
 
-            <!-- VPN Tunnel Status Card -->
-            <ui:Card Grid.Row="2" Margin="0,12,0,0" Padding="16">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-
-                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,20,0">
-                        <ui:SymbolIcon
-                            Margin="0,0,10,0"
-                            FontSize="20"
-                            Foreground="#00B2FF"
-                            Symbol="Shield24" />
-                        <StackPanel>
+            <!-- Network Lag Radar (Top-3 Consumers) -->
+            <ui:Card Grid.Row="3" Margin="0,12,0,0" Padding="16">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <TextBlock
+                            DockPanel.Dock="Right"
+                            VerticalAlignment="Center"
+                            FontSize="11"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="Безопасная заморозка (NtSuspendProcess) с авто-разморозкой при выходе" />
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon
+                                Margin="0,0,8,0"
+                                FontSize="18"
+                                Foreground="#7C5CFF"
+                                Symbol="CellularData124" />
                             <TextBlock
+                                VerticalAlignment="Center"
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Text="Сетевой радар лагов (Топ-3 потребителя)" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Активный сетевой трафик пользовательских процессов не обнаружен."
+                        Visibility="{Binding ViewModel.HasNoTopNetworkProcesses, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                    <ItemsControl
+                        ItemsSource="{Binding ViewModel.TopNetworkProcesses}"
+                        Visibility="{Binding ViewModel.HasTopNetworkProcesses, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,4,0,4" ToolTip="{Binding TooltipText}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="110" />
+                                        <ColumnDefinition Width="100" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Image
+                                        Grid.Column="0"
+                                        Width="16"
+                                        Height="16"
+                                        Margin="0,0,10,0"
+                                        VerticalAlignment="Center"
+                                        Source="{Binding Icon}"
+                                        Visibility="{Binding HasIcon, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    <ui:SymbolIcon
+                                        Grid.Column="0"
+                                        Margin="0,0,10,0"
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                        Symbol="AppGeneric20"
+                                        Visibility="{Binding HasNoIcon, Converter={StaticResource BooleanToVisibilityConverter}}" />
+
+                                    <TextBlock
+                                        Grid.Column="1"
+                                        VerticalAlignment="Center"
+                                        FontSize="13"
+                                        FontWeight="Medium"
+                                        Text="{Binding ProcessName}"
+                                        TextTrimming="CharacterEllipsis" />
+
+                                    <TextBlock
+                                        Grid.Column="2"
+                                        VerticalAlignment="Center"
+                                        FontSize="12"
+                                        FontWeight="SemiBold"
+                                        Foreground="#7C5CFF"
+                                        Text="{Binding DownloadText}" />
+
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        VerticalAlignment="Center"
+                                        FontSize="12"
+                                        FontWeight="Medium"
+                                        Foreground="#FFA600"
+                                        Text="{Binding UploadText}" />
+
+                                    <ui:Button
+                                        Grid.Column="4"
+                                        Padding="10,4"
+                                        Appearance="Secondary"
+                                        Command="{Binding ToggleSuspendCommand}"
+                                        Content="{Binding ActionButtonText}"
+                                        FontSize="11"
+                                        IsEnabled="{Binding CanToggleSuspend}"
+                                        ToolTip="{Binding ActionTooltip}">
+                                        <ui:Button.Icon>
+                                            <ui:SymbolIcon Symbol="{Binding ActionButtonIcon}" />
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Battery Devices Card -->
+            <ui:Card Grid.Row="4" Margin="0,12,0,0" Padding="16">
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:Button
+                                Margin="0,0,6,0"
+                                Appearance="Transparent"
+                                Command="{Binding ViewModel.ExportHidDiagnosticsCommand}"
+                                Content="Поиск HID"
                                 FontSize="12"
-                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="VPN-туннель" />
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse
-                                    Width="9"
-                                    Height="9"
-                                    Margin="0,0,6,0"
-                                    VerticalAlignment="Center"
-                                    Fill="{Binding ViewModel.VpnStatusBrush}" />
-                                <TextBlock
-                                    FontSize="15"
-                                    FontWeight="SemiBold"
-                                    Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                    Text="{Binding ViewModel.VpnStatusText}" />
-                            </StackPanel>
+                                Icon="{ui:SymbolIcon Search20}"
+                                Padding="8,4"
+                                ToolTip="Сохранить список всех USB HID-устройств в %AppData%\PulseGuard\hid_devices.txt" />
+                            <ui:Button
+                                Command="{Binding ViewModel.RefreshBatteryDevicesCommand}"
+                                Content="Обновить"
+                                Icon="{ui:SymbolIcon ArrowSync20}"
+                                Padding="10,4" />
                         </StackPanel>
-                    </StackPanel>
-
-                    <UniformGrid Grid.Column="1" Columns="3" VerticalAlignment="Center" Margin="0,0,16,0">
-                        <StackPanel>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <ui:SymbolIcon
+                                Margin="0,0,8,0"
+                                FontSize="18"
+                                Foreground="#00E5A0"
+                                Symbol="Battery520" />
                             <TextBlock
-                                FontSize="11"
-                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Сервер" />
-                            <TextBlock
-                                FontSize="13"
-                                FontWeight="Medium"
-                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="{Binding ViewModel.VpnServerText}"
-                                TextTrimming="CharacterEllipsis" />
+                                FontSize="14"
+                                FontWeight="SemiBold"
+                                Text="Заряд устройств" />
                         </StackPanel>
+                    </DockPanel>
 
-                        <StackPanel>
-                            <TextBlock
-                                FontSize="11"
-                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Внешний IP" />
-                            <TextBlock
-                                FontSize="13"
-                                FontWeight="Medium"
-                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="{Binding ViewModel.VpnIpText}" />
-                        </StackPanel>
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Беспроводные и PnP-устройства с датчиком заряда не найдены."
+                        Visibility="{Binding ViewModel.HasNoBatteryDevices, Converter={StaticResource BooleanToVisibilityConverter}}" />
 
-                        <StackPanel>
-                            <TextBlock
-                                FontSize="11"
-                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Пинг (1.1.1.1)" />
-                            <TextBlock
-                                FontSize="13"
-                                FontWeight="Medium"
-                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="{Binding ViewModel.VpnPingText}" />
-                        </StackPanel>
-                    </UniformGrid>
+                    <ItemsControl ItemsSource="{Binding ViewModel.BatteryDevices}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,4,0,4" Opacity="{Binding ItemOpacity}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="28" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="150" />
+                                        <ColumnDefinition Width="48" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <ui:Button
-                            Margin="0,0,8,0"
-                            Appearance="Primary"
-                            Command="{Binding ViewModel.ToggleVpnCommand}"
-                            Content="{Binding ViewModel.VpnToggleButtonText}"
-                            Padding="12,6" />
-                        <ui:Button
-                            Command="{Binding ViewModel.RestartVpnCommand}"
-                            Content="Перезапустить"
-                            Icon="{ui:SymbolIcon ArrowSync20}"
-                            Padding="10,6" />
-                    </StackPanel>
-                </Grid>
+                                    <ui:SymbolIcon
+                                        Grid.Column="0"
+                                        VerticalAlignment="Center"
+                                        FontSize="16"
+                                        Foreground="{Binding AccentBrush}"
+                                        Symbol="{Binding DeviceIcon}" />
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="0,0,12,0">
+                                        <TextBlock
+                                            FontSize="13"
+                                            FontWeight="Medium"
+                                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                            Text="{Binding Name}"
+                                            TextTrimming="CharacterEllipsis" />
+                                        <TextBlock
+                                            FontSize="11"
+                                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                            Text="{Binding StatusText}" />
+                                    </StackPanel>
+
+                                    <ProgressBar
+                                        Grid.Column="2"
+                                        Height="6"
+                                        VerticalAlignment="Center"
+                                        Foreground="{Binding AccentBrush}"
+                                        Maximum="100"
+                                        Minimum="0"
+                                        Value="{Binding BatteryPercent, Mode=OneWay}" />
+
+                                    <TextBlock
+                                        Grid.Column="3"
+                                        Margin="10,0,10,0"
+                                        HorizontalAlignment="Right"
+                                        VerticalAlignment="Center"
+                                        FontSize="13"
+                                        FontWeight="SemiBold"
+                                        Foreground="{Binding AccentBrush}"
+                                        Text="{Binding BatteryPercentText}" />
+
+                                    <ui:ToggleSwitch
+                                        Grid.Column="4"
+                                        VerticalAlignment="Center"
+                                        Content="В оверлей"
+                                        IsChecked="{Binding IsPinnedToOverlay, Mode=TwoWay}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
             </ui:Card>
 
             <!-- Real-time Charts (Last 60 Seconds) -->
-            <Grid Grid.Row="3" Margin="0,16,0,0">
+            <Grid Grid.Row="5" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="12" />
@@ -346,8 +494,52 @@
                 </ui:Card>
             </Grid>
 
+            <!-- Stutter / Latency Stability Card -->
+            <ui:Card Grid.Row="6" Margin="0,12,0,0" Padding="16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="{Binding ViewModel.StutterStabilityBrush}"
+                            Symbol="Pulse24" />
+                        <StackPanel>
+                            <TextBlock
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Стабильность / Фризы за сессию" />
+                            <TextBlock
+                                FontSize="15"
+                                FontWeight="SemiBold"
+                                Foreground="{Binding ViewModel.StutterStabilityBrush}"
+                                Text="{Binding ViewModel.StutterCountText}" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock
+                            Margin="0,0,16,0"
+                            VerticalAlignment="Center"
+                            FontSize="13"
+                            FontWeight="Medium"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="{Binding ViewModel.StutterMaxDelayText}" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.StutterDetailsText}" />
+                    </StackPanel>
+                </Grid>
+            </ui:Card>
+
             <!-- Peak Alerts Log -->
-            <ui:Card Grid.Row="4" Margin="0,16,0,0" Padding="16">
+            <ui:Card Grid.Row="7" Margin="0,12,0,0" Padding="16">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,8">
                         <ui:Button

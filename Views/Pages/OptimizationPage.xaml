@@ -24,55 +24,106 @@
 
             <!-- Card 1: Safe RAM Cleaner -->
             <ui:Card Margin="0,0,0,14" Padding="20">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
 
-                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <ui:SymbolIcon
-                                Margin="0,0,10,0"
-                                FontSize="22"
-                                Foreground="#00E5A0"
-                                Symbol="Memory16" />
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <ui:SymbolIcon
+                                    Margin="0,0,10,0"
+                                    FontSize="22"
+                                    Foreground="#00E5A0"
+                                    Symbol="Memory16" />
+                                <TextBlock
+                                    VerticalAlignment="Center"
+                                    FontSize="16"
+                                    FontWeight="SemiBold"
+                                    Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                    Text="Безопасная очистка ОЗУ" />
+                            </StackPanel>
+
                             <TextBlock
-                                VerticalAlignment="Center"
-                                FontSize="16"
-                                FontWeight="SemiBold"
+                                Margin="0,8,0,0"
+                                FontSize="14"
+                                FontWeight="Medium"
                                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="Безопасная очистка ОЗУ" />
+                                Text="{Binding ViewModel.RamStatusText}" />
+
+                            <TextBlock
+                                Margin="0,4,0,0"
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{Binding ViewModel.RamActionStatus}"
+                                TextWrapping="Wrap" />
                         </StackPanel>
 
-                        <TextBlock
-                            Margin="0,8,0,0"
-                            FontSize="14"
-                            FontWeight="Medium"
-                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                            Text="{Binding ViewModel.RamStatusText}" />
+                        <ui:Button
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            Appearance="Primary"
+                            Command="{Binding ViewModel.CleanRamCommand}"
+                            Content="Освободить память"
+                            Icon="{ui:SymbolIcon Broom24}"
+                            IsEnabled="{Binding ViewModel.CanCleanRam}"
+                            Padding="16,10" />
+                    </Grid>
 
-                        <TextBlock
-                            Margin="0,4,0,0"
-                            FontSize="12"
-                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                            Text="{Binding ViewModel.RamActionStatus}"
-                            TextWrapping="Wrap" />
-                    </StackPanel>
+                    <Border Height="1" Margin="0,14,0,12" Background="#1FFFFFFF" />
 
-                    <ui:Button
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        Appearance="Primary"
-                        Command="{Binding ViewModel.CleanRamCommand}"
-                        Content="Освободить память"
-                        Icon="{ui:SymbolIcon Broom24}"
-                        IsEnabled="{Binding ViewModel.CanCleanRam}"
-                        Padding="16,10" />
-                </Grid>
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,10"
+                        Content="Планировщик авто-очистки ОЗУ при превышении порога / по расписанию"
+                        IsChecked="{Binding ViewModel.IsAutoRamCleanEnabled, Mode=TwoWay}" />
+
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="220" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,16,0">
+                            <DockPanel>
+                                <TextBlock
+                                    DockPanel.Dock="Right"
+                                    FontSize="13"
+                                    FontWeight="SemiBold"
+                                    Foreground="#00E5A0"
+                                    Text="{Binding ViewModel.AutoRamCleanThresholdPercent, StringFormat='{}{0:0} %'}" />
+                                <TextBlock
+                                    FontSize="13"
+                                    Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                    Text="Порог авто-очистки ОЗУ (65–95 %)" />
+                            </DockPanel>
+                            <Slider
+                                Margin="0,4,0,0"
+                                IsSnapToTickEnabled="True"
+                                Maximum="95"
+                                Minimum="65"
+                                TickFrequency="1"
+                                Value="{Binding ViewModel.AutoRamCleanThresholdPercent, Mode=TwoWay}" />
+                        </StackPanel>
+
+                        <ComboBox
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            DisplayMemberPath="DisplayText"
+                            ItemsSource="{Binding ViewModel.AutoCleanIntervalOptions}"
+                            SelectedItem="{Binding ViewModel.SelectedAutoCleanIntervalOption, Mode=TwoWay}" />
+                    </Grid>
+
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{Binding ViewModel.AutoRamCleanStatus}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
             </ui:Card>
 
-            <!-- Card 2: Temporary Files Cleaner -->
+            <!-- Card 2: Temporary Files & Cache Cleaner -->
             <ui:Card Margin="0,0,0,14" Padding="20">
                 <StackPanel>
                     <DockPanel Margin="0,0,0,12">
@@ -104,13 +155,13 @@
                                 FontSize="16"
                                 FontWeight="SemiBold"
                                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="Очистка временных файлов" />
+                                Text="Безопасная очистка кэша и временных файлов" />
                         </StackPanel>
                     </DockPanel>
 
-                    <!-- Target Checkboxes + Per-Target Analysis -->
                     <Grid Margin="0,4,0,0">
                         <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
                             <RowDefinition Height="Auto" />
@@ -153,10 +204,25 @@
                         <CheckBox
                             Grid.Row="2"
                             Grid.Column="0"
+                            Margin="0,0,0,6"
+                            Content="Кэш шейдеров Direct3D (%LOCALAPPDATA%\D3DSCache)"
+                            IsChecked="{Binding ViewModel.IncludeD3dShaderCache, Mode=TwoWay}" />
+                        <TextBlock
+                            Grid.Row="2"
+                            Grid.Column="1"
+                            Margin="16,0,0,6"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.D3dShaderCacheInfo}" />
+
+                        <CheckBox
+                            Grid.Row="3"
+                            Grid.Column="0"
                             Content="Корзина Windows"
                             IsChecked="{Binding ViewModel.IncludeRecycleBin, Mode=TwoWay}" />
                         <TextBlock
-                            Grid.Row="2"
+                            Grid.Row="3"
                             Grid.Column="1"
                             Margin="16,0,0,0"
                             VerticalAlignment="Center"
@@ -174,51 +240,80 @@
                 </StackPanel>
             </ui:Card>
 
-            <!-- Card 3: Game Mode -->
+            <!-- Card 3: Internet & DNS Optimization -->
             <ui:Card Padding="20">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
+                <StackPanel>
+                    <DockPanel Margin="0,0,0,10">
+                        <StackPanel Orientation="Horizontal" DockPanel.Dock="Right" VerticalAlignment="Center">
+                            <ui:Button
+                                Margin="0,0,8,0"
+                                Appearance="Secondary"
+                                Command="{Binding ViewModel.DiagnoseNetworkCommand}"
+                                Content="Проверить DNS"
+                                Icon="{ui:SymbolIcon Search24}"
+                                IsEnabled="{Binding ViewModel.CanRunNetworkAction}"
+                                Padding="12,8" />
+                            <ui:Button
+                                Appearance="Primary"
+                                Command="{Binding ViewModel.OptimizeNetworkCommand}"
+                                Content="Ускорить интернет"
+                                Icon="{ui:SymbolIcon Flash24}"
+                                IsEnabled="{Binding ViewModel.CanRunNetworkAction}"
+                                Padding="14,8" />
+                        </StackPanel>
 
-                    <StackPanel Grid.Column="0" Margin="0,0,20,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ui:SymbolIcon
                                 Margin="0,0,10,0"
                                 FontSize="22"
-                                Foreground="#FFB900"
-                                Symbol="Games24" />
+                                Foreground="#38BDF8"
+                                Symbol="Globe24" />
                             <TextBlock
                                 VerticalAlignment="Center"
                                 FontSize="16"
                                 FontWeight="SemiBold"
                                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="Игровой режим (Game Mode)" />
+                                Text="Оптимизация интернета и DNS" />
                         </StackPanel>
+                    </DockPanel>
 
-                        <TextBlock
-                            Margin="0,8,0,0"
-                            FontSize="13"
-                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                            Text="Переключает схему электропитания Windows на «Высокую производительность» и понижает приоритет фоновых программ (chrome, firefox, msedge, opera, brave, discord, telegram, qbittorrent, steamwebhelper) до BelowNormal. При выключении или закрытии приложения исходные настройки полностью восстанавливаются."
-                            TextWrapping="Wrap" />
+                    <TextBlock
+                        FontSize="13"
+                        FontWeight="Medium"
+                        Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                        Text="{Binding ViewModel.NetworkAdapterInfo}"
+                        TextWrapping="Wrap" />
 
-                        <TextBlock
-                            Margin="0,8,0,0"
-                            FontSize="12"
-                            FontWeight="Medium"
-                            Foreground="#FFB900"
-                            Text="{Binding ViewModel.GameModeStatus}"
-                            TextWrapping="Wrap" />
+                    <TextBlock
+                        Margin="0,6,0,0"
+                        FontSize="12"
+                        Foreground="#00E5A0"
+                        Text="{Binding ViewModel.NetworkBenchmarkSummary}"
+                        TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <ui:Button
+                            Margin="0,0,8,0"
+                            Appearance="Secondary"
+                            Command="{Binding ViewModel.FlushDnsCommand}"
+                            Content="Очистить кэш DNS"
+                            IsEnabled="{Binding ViewModel.CanRunNetworkAction}"
+                            Padding="10,6" />
+                        <ui:Button
+                            Appearance="Secondary"
+                            Command="{Binding ViewModel.ResetDnsToDhcpCommand}"
+                            Content="Сбросить DNS (DHCP)"
+                            IsEnabled="{Binding ViewModel.CanRunNetworkAction}"
+                            Padding="10,6" />
                     </StackPanel>
 
-                    <ui:ToggleSwitch
-                        Grid.Column="1"
-                        VerticalAlignment="Center"
-                        IsChecked="{Binding ViewModel.IsGameModeEnabled, Mode=TwoWay}"
-                        IsEnabled="{Binding ViewModel.CanToggleGameMode}" />
-                </Grid>
+                    <TextBlock
+                        Margin="0,10,0,0"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="{Binding ViewModel.NetworkActionStatus}"
+                        TextWrapping="Wrap" />
+                </StackPanel>
             </ui:Card>
         </StackPanel>
     </ui:DynamicScrollViewer>

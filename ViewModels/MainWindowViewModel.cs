@@ -4,11 +4,15 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using PulseGuard.Helpers;
 using PulseGuard.Modules.Monitoring;
+using PulseGuard.Modules.Network;
 using PulseGuard.Modules.Optimization;
 using PulseGuard.Modules.Overlay;
+using PulseGuard.Modules.Playtime;
+using PulseGuard.Modules.Processes;
 using PulseGuard.Modules.Settings;
 using PulseGuard.Modules.Settings.Models;
 using PulseGuard.Modules.Vpn;
+using PulseGuard.Services;
 
 namespace PulseGuard.ViewModels;
 
@@ -19,6 +23,11 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly SettingsService _settingsService;
     private readonly OverlayService _overlayService;
     private readonly VpnService _vpnService;
+    private readonly TrayNotificationService _trayNotificationService;
+    private readonly NetworkRadarModule _networkRadarModule;
+    private readonly ProcessMonitorModule _processMonitorModule;
+    private readonly StutterMonitorModule _stutterMonitorModule;
+    private readonly PlaytimeTrackerModule _playtimeTrackerModule;
 
     [ObservableProperty]
     private string _applicationTitle = "PulseGuard";
@@ -32,6 +41,9 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isOverlayVisible;
 
+    [ObservableProperty]
+    private bool _isOverlayClickThrough;
+
     public ImageSource TrayIconSource { get; } = TrayIconHelper.CreatePulseIcon();
 
     public bool IsExplicitExitRequested { get; private set; }
@@ -43,15 +55,26 @@ public partial class MainWindowViewModel : ObservableObject
         SafeRamCleanerTool ramCleanerTool,
         SettingsService settingsService,
         OverlayService overlayService,
-        VpnService vpnService)
+        VpnService vpnService,
+        TrayNotificationService trayNotificationService,
+        NetworkRadarModule networkRadarModule,
+        ProcessMonitorModule processMonitorModule,
+        StutterMonitorModule stutterMonitorModule,
+        PlaytimeTrackerModule playtimeTrackerModule)
     {
         _pollingService = pollingService;
         _ramCleanerTool = ramCleanerTool;
         _settingsService = settingsService;
         _overlayService = overlayService;
         _vpnService = vpnService;
+        _trayNotificationService = trayNotificationService;
+        _networkRadarModule = networkRadarModule;
+        _processMonitorModule = processMonitorModule;
+        _stutterMonitorModule = stutterMonitorModule;
+        _playtimeTrackerModule = playtimeTrackerModule;
 
         _isOverlayVisible = _overlayService.IsVisible;
+        _isOverlayClickThrough = _settingsService.Current.IsOverlayClickThrough;
         _overlayService.VisibilityChanged += OnOverlayVisibilityChanged;
         _settingsService.SettingsChanged += OnSettingsChanged;
     }
@@ -72,8 +95,9 @@ public partial class MainWindowViewModel : ObservableObject
         UpdateMonitoringPauseState();
     }
 
-    private void OnSettingsChanged(AppSettings _)
+    private void OnSettingsChanged(AppSettings settings)
     {
+        IsOverlayClickThrough = settings.IsOverlayClickThrough;
         UpdateMonitoringPauseState();
     }
 
@@ -84,6 +108,8 @@ public partial class MainWindowViewModel : ObservableObject
             && !_overlayService.IsVisible;
 
         _pollingService.SetPaused(shouldPauseMonitoring);
+        _networkRadarModule.SetPaused(shouldPauseMonitoring);
+        _stutterMonitorModule.SetPaused(shouldPauseMonitoring);
 
         StatusMessage = IsMinimizedToTray
             ? shouldPauseMonitoring
@@ -99,6 +125,12 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private void ToggleOverlayClickThrough()
+    {
+        _settingsService.Update(s => s.IsOverlayClickThrough = !s.IsOverlayClickThrough);
+    }
+
+    [RelayCommand]
     private void ShowWindow()
     {
         var window = Application.Current.MainWindow;
@@ -108,18 +140,42 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         IsMinimizedToTray = false;
+        window.ShowInTaskbar = true;
+        window.ShowActivated = true;
         if (!window.IsVisible)
         {
             window.Show();
         }
 
-        if (window.WindowState == WindowState.Minimized)
-        {
-            window.WindowState = WindowState.Normal;
-        }
-
+        window.WindowState = WindowState.Normal;
         window.Activate();
         window.Focus();
+    }
+
+    [RelayCommand]
+    private void ToggleWindow()
+    {
+        var window = Application.Current.MainWindow;
+        if (window is null)
+        {
+            return;
+        }
+
+        if (window.IsVisible && window.WindowState != WindowState.Minimized && window.IsActive)
+        {
+            MinimizeToTray();
+            return;
+        }
+
+        ShowWindow();
+
+        // Briefly toggle Topmost so global hotkeys reliably bring the window above other apps.
+        bool wasTopmost = window.Topmost;
+        if (!wasTopmost)
+        {
+            window.Topmost = true;
+            window.Topmost = false;
+        }
     }
 
     [RelayCommand]
@@ -131,6 +187,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _playtimeTrackerModule.FlushSave();
         IsMinimizedToTray = true;
         window.Hide();
     }
@@ -146,8 +203,12 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task ToggleVpnAsync()
     {
-        var (_, message) = await _vpnService.ToggleAsync();
+        var (success, message) = await _vpnService.ToggleAsync();
         StatusMessage = message;
+        if (!success)
+        {
+            _trayNotificationService.TryShowWarningBalloon("PulseGuard — VPN", message);
+        }
     }
 
     [RelayCommand]
@@ -156,6 +217,9 @@ public partial class MainWindowViewModel : ObservableObject
         IsExplicitExitRequested = true;
         _overlayService.VisibilityChanged -= OnOverlayVisibilityChanged;
         _settingsService.SettingsChanged -= OnSettingsChanged;
+        _processMonitorModule.ResumeAllSuspendedProcesses();
+        _playtimeTrackerModule.FlushSave();
+        _networkRadarModule.Dispose();
         _overlayService.Dispose();
         _vpnService.Dispose();
         _pollingService.Dispose();

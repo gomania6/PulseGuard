@@ -32,6 +32,15 @@ public sealed class SettingsService
         Current = LoadFromDisk();
     }
 
+    public void SaveSettings()
+    {
+        lock (_syncLock)
+        {
+            Current.Normalize();
+            SaveToDiskLocked(Current);
+        }
+    }
+
     public void Update(Action<AppSettings> mutate)
     {
         AppSettings snapshot;
@@ -93,7 +102,9 @@ public sealed class SettingsService
             }
 
             string json = JsonSerializer.Serialize(settings, JsonOptions);
-            File.WriteAllText(_settingsFilePath, json);
+            string tempFilePath = _settingsFilePath + ".tmp";
+            File.WriteAllText(tempFilePath, json);
+            File.Move(tempFilePath, _settingsFilePath, overwrite: true);
         }
         catch
         {

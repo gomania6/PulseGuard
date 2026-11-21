@@ -74,6 +74,20 @@
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem
+                    Content="Игровой режим"
+                    TargetPageType="{x:Type pages:GameOptimizationPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Games24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem
+                    Content="VPN"
+                    TargetPageType="{x:Type pages:VpnPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Shield24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+                <ui:NavigationViewItem
                     Content="Процессы"
                     TargetPageType="{x:Type pages:ProcessesPage}">
                     <ui:NavigationViewItem.Icon>
@@ -123,6 +137,11 @@
                         Header="Показать / скрыть мини-виджет"
                         Icon="{ui:SymbolIcon PictureInPicture24}"
                         IsChecked="{Binding ViewModel.IsOverlayVisible, Mode=OneWay}" />
+                    <ui:MenuItem
+                        Command="{Binding ViewModel.ToggleOverlayClickThroughCommand}"
+                        Header="Прозрачность оверлея для кликов (Click-Through)"
+                        Icon="{ui:SymbolIcon Cursor24}"
+                        IsChecked="{Binding ViewModel.IsOverlayClickThrough, Mode=OneWay}" />
                     <ui:MenuItem
                         Command="{Binding ViewModel.ToggleVpnCommand}"
                         Header="VPN: Подключить / Отключить"

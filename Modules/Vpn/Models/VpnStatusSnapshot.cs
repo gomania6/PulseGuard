@@ -9,6 +9,13 @@ public enum VpnConnectionState
     Error
 }
 
+public enum ConnectionQuality
+{
+    Good,
+    Warning,
+    Bad
+}
+
 /// <summary>
 /// Deserialization model for %AppData%\PulseGuard\vpn_status.json written by external VPN clients.
 /// </summary>
@@ -46,8 +53,12 @@ public sealed record VpnStatusSnapshot(
     string ServerName,
     string ExternalIp,
     long? PingMs,
+    double PacketLossPercent,
+    double JitterMs,
+    ConnectionQuality Quality,
     bool IsProcessRunning,
-    bool IsConfigured)
+    bool IsConfigured,
+    string PingHost = "1.1.1.1")
 {
     public static VpnStatusSnapshot CreateDefault(bool isConfigured = false) => new(
         VpnConnectionState.Disconnected,
@@ -56,6 +67,9 @@ public sealed record VpnStatusSnapshot(
         "—",
         "—",
         null,
+        0,
+        0,
+        ConnectionQuality.Good,
         false,
         isConfigured);
 }

@@ -2,16 +2,20 @@ using System.Diagnostics;
 using System.Text.RegularExpressions;
 using PulseGuard.Core.Interfaces;
 using PulseGuard.Core.Security;
+using PulseGuard.Modules.Optimization.Models;
 
 namespace PulseGuard.Modules.Optimization;
 
 /// <summary>
-/// Safe Game Mode: switches Windows power plan to High Performance and lowers priority
-/// of known background apps to BelowNormal, restoring everything on disable or app exit.
+/// Safe Game Mode (Anti-Cheat Ready): switches Windows power plan to Ultimate/High Performance,
+/// sets 0.5 ms timer resolution, trims background RAM, purges Standby List, suspends strictly
+/// whitelisted background apps, and lowers priority of safe non-protected background apps.
+/// Never calls OpenProcess/SetPriorityClass/ProcessorAffinity/NtSuspendProcess on games,
+/// vgc.exe, vgtray.exe, steam.exe, steamwebhelper.exe, or VPN processes.
 /// </summary>
 public sealed partial class GameModeTool : IOptimizerTool, IDisposable
 {
-    private const string HighPerformancePowerPlanGuid = "8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c";
+    private const uint DesiredTimerResolution100Ns = 5000; // 0.5 ms
 
     private static readonly HashSet<string> BackgroundApps = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -22,23 +26,37 @@ public sealed partial class GameModeTool : IOptimizerTool, IDisposable
         "brave",
         "discord",
         "telegram",
-        "qbittorrent",
-        "steamwebhelper"
+        "qbittorrent"
     };
 
     private readonly record struct SavedProcessPriority(int Pid, string ProcessName, ProcessPriorityClass OriginalPriority);
 
+    private readonly SafeRamCleanerTool _ramCleanerTool;
+    private readonly OptimizationProfileService _profileService;
     private readonly object _syncLock = new();
     private readonly List<SavedProcessPriority> _savedPriorities = new();
     private string? _previousPowerPlanGuid;
+    private bool _timerResolutionBoosted;
     private bool _isActive;
+    private DateTime? _sessionStartUtc;
+    private string? _activeGameName;
     private bool _disposed;
+
+    public GameModeTool(SafeRamCleanerTool ramCleanerTool, OptimizationProfileService profileService)
+    {
+        _ramCleanerTool = ramCleanerTool;
+        _profileService = profileService;
+    }
 
     public string Id => "game-mode";
     public string Name => "Игровой режим (Game Mode)";
-    public string Description => "Переключает схему питания на «Высокую производительность» и понижает приоритет фоновых приложений.";
+    public string Description => "Переключает схему питания, устанавливает таймер 0.5 мс, очищает Standby List и безопасно приостанавливает выбранные фоновые программы.";
     public bool CanExecute => true;
     public bool IsActive => _isActive;
+    public DateTime? SessionStartUtc => _sessionStartUtc;
+    public string? ActiveGameName => _activeGameName;
+
+    public event Action<bool, string?>? StateChanged;
 
     public Task<OptimizationPreview> PreviewAsync(CancellationToken cancellationToken = default)
     {
@@ -53,10 +71,13 @@ public sealed partial class GameModeTool : IOptimizerTool, IDisposable
         return _isActive ? DisableAsync() : EnableAsync();
     }
 
-    public Task<OptimizationResult> EnableAsync()
+    public Task<OptimizationResult> EnableAsync(string? gameName = null)
     {
         return Task.Run(() =>
         {
+            OptimizationResult result;
+            bool raised = false;
+
             lock (_syncLock)
             {
                 if (_isActive)
@@ -64,20 +85,47 @@ public sealed partial class GameModeTool : IOptimizerTool, IDisposable
                     return new OptimizationResult(true, "Игровой режим уже включён.", 0, _savedPriorities.Count);
                 }
 
+                ProcessBlacklist.SetActiveGameExclusion(gameName);
+
                 _previousPowerPlanGuid = GetActivePowerPlanGuid();
-                var powerPlanSwitched = SetPowerPlan(HighPerformancePowerPlanGuid);
+                var powerPlanSwitched = SetPowerPlan(OptimizationProfileService.UltimatePerformancePowerPlanGuid)
+                    || SetPowerPlan(OptimizationProfileService.HighPerformancePowerPlanGuid)
+                    || SetPowerPlan("SCHEME_MIN");
+
+                _timerResolutionBoosted = OptimizationNativeMethods.NtSetTimerResolution(DesiredTimerResolution100Ns, true, out _) >= 0;
 
                 _savedPriorities.Clear();
-                var loweredCount = LowerBackgroundAppPriorities();
+                var loweredCount = LowerBackgroundAppPriorities(gameName);
+                var suspendedCount = _profileService.ActiveProfile != OptimizationProfileType.NormalReset
+                    ? _profileService.SuspendWhitelistedBackgroundApps()
+                    : 0;
+                _ = OptimizationProfileService.TryPurgeStandbyList(out _);
+
                 _isActive = true;
+                _sessionStartUtc = DateTime.UtcNow;
+                _activeGameName = gameName;
+                raised = true;
 
                 var powerNote = powerPlanSwitched
-                    ? "схема питания «Высокая производительность» активна"
+                    ? "схема «Макс. производительность»"
                     : "схема питания не изменена";
+                var timerNote = _timerResolutionBoosted ? ", таймер 0.5 мс" : string.Empty;
+                var suspendNote = suspendedCount > 0 ? $", заморожено по WhiteList: {suspendedCount}" : string.Empty;
 
-                var message = $"Игровой режим включён: {powerNote}, понижен приоритет у {loweredCount} процессов.";
-                return new OptimizationResult(true, message, 0, loweredCount);
+                var prefix = string.IsNullOrWhiteSpace(gameName)
+                    ? "Игровой режим включён"
+                    : $"Авто-режим ({gameName}) включён";
+                var message = $"{prefix}: {powerNote}{timerNote}{suspendNote}, понижен приоритет у {loweredCount} фоновых процессов.";
+                result = new OptimizationResult(true, message, 0, loweredCount + suspendedCount);
             }
+
+            if (raised)
+            {
+                _ = _ramCleanerTool.ExecuteAsync();
+                StateChanged?.Invoke(true, gameName);
+            }
+
+            return result;
         });
     }
 
@@ -88,10 +136,15 @@ public sealed partial class GameModeTool : IOptimizerTool, IDisposable
 
     private OptimizationResult RestoreState()
     {
+        OptimizationResult result;
+        bool raised = false;
+
         lock (_syncLock)
         {
             if (!_isActive)
             {
+                ProcessBlacklist.SetActiveGameExclusion(null);
+                _profileService.ResumeAllProfileSuspendedProcesses();
                 return new OptimizationResult(true, "Игровой режим отключён.", 0, 0);
             }
 
@@ -102,16 +155,36 @@ public sealed partial class GameModeTool : IOptimizerTool, IDisposable
                 _previousPowerPlanGuid = null;
             }
 
+            if (_timerResolutionBoosted)
+            {
+                _ = OptimizationNativeMethods.NtSetTimerResolution(DesiredTimerResolution100Ns, false, out _);
+                _timerResolutionBoosted = false;
+            }
+
+            var resumedCount = _profileService.ResumeAllProfileSuspendedProcesses();
             var restoredCount = RestoreBackgroundAppPriorities();
+            ProcessBlacklist.SetActiveGameExclusion(null);
+
             _isActive = false;
+            _sessionStartUtc = null;
+            _activeGameName = null;
+            raised = true;
 
             var powerNote = powerRestored ? "исходная схема питания восстановлена" : "схема питания проверена";
-            var message = $"Игровой режим выключен: {powerNote}, восстановлен приоритет у {restoredCount} процессов.";
-            return new OptimizationResult(true, message, 0, restoredCount);
+            var resumeNote = resumedCount > 0 ? $", разморожено процессов: {resumedCount}" : string.Empty;
+            var message = $"Игровой режим выключен: {powerNote}, восстановлен приоритет у {restoredCount} процессов{resumeNote}.";
+            result = new OptimizationResult(true, message, 0, restoredCount + resumedCount);
         }
+
+        if (raised)
+        {
+            StateChanged?.Invoke(false, null);
+        }
+
+        return result;
     }
 
-    private int LowerBackgroundAppPriorities()
+    private int LowerBackgroundAppPriorities(string? activeGameName)
     {
         var count = 0;
         var currentPid = Environment.ProcessId;
@@ -136,6 +209,12 @@ public sealed partial class GameModeTool : IOptimizerTool, IDisposable
                     var name = process.ProcessName;
 
                     if (pid <= 4 || pid == currentPid || ProcessBlacklist.IsProtected(name))
+                    {
+                        continue;
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(activeGameName)
+                        && string.Equals(name, activeGameName, StringComparison.OrdinalIgnoreCase))
                     {
                         continue;
                     }
@@ -268,6 +347,10 @@ public sealed partial class GameModeTool : IOptimizerTool, IDisposable
         {
             RestoreState();
         }
+        else
+        {
+            ProcessBlacklist.SetActiveGameExclusion(null);
+            _profileService.ResumeAllProfileSuspendedProcesses();
+        }
     }
 }
-

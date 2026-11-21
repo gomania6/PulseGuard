@@ -114,6 +114,16 @@
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
                         Text="Отключает отрисовку графиков и фоновый опрос датчиков, когда окно свёрнуто в трей."
                         TextWrapping="Wrap" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,12,0,4"
+                        Content="Не использовать драйвер датчиков CPU (режим совместимости)"
+                        IsChecked="{Binding ViewModel.DisableCpuKernelDriver, Mode=TwoWay}" />
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Отключает kernel-драйвер LibreHardwareMonitor для CPU (WinRing0) и использует только безопасные источники (HWiNFO64 Shared Memory, WMI, ACPI)."
+                        TextWrapping="Wrap" />
                 </StackPanel>
             </ui:Card>
 
@@ -206,15 +216,79 @@
                             Value="{Binding ViewModel.RamThresholdPercent, Mode=TwoWay}" />
                     </Grid>
 
+                    <!-- Break Reminder -->
+                    <Grid Margin="0,0,0,14">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="0"
+                            FontSize="14"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Напоминание об отдыхе для глаз (0 — выкл)" />
+                        <TextBlock
+                            Grid.Row="0"
+                            Grid.Column="1"
+                            FontSize="14"
+                            FontWeight="SemiBold"
+                            Foreground="#00E5A0"
+                            Text="{Binding ViewModel.BreakReminderDisplayText}" />
+
+                        <Slider
+                            Grid.Row="1"
+                            Grid.ColumnSpan="2"
+                            Margin="0,6,0,0"
+                            IsSnapToTickEnabled="True"
+                            Maximum="240"
+                            Minimum="0"
+                            TickFrequency="15"
+                            Value="{Binding ViewModel.BreakReminderMinutes, Mode=TwoWay}" />
+                    </Grid>
+
                     <ui:ToggleSwitch
                         Margin="0,0,0,4"
                         Content="Показывать всплывающие уведомления Windows при превышении порогов"
                         IsChecked="{Binding ViewModel.ShowThresholdNotifications, Mode=TwoWay}" />
                     <TextBlock
+                        Margin="0,0,0,12"
                         FontSize="12"
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
                         Text="Отправляет уведомление из иконки в системном трее не чаще одного раза в 2 минуты."
                         TextWrapping="Wrap" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Профиль уведомлений" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Определяет, когда показывать всплывающие уведомления трея." />
+                        </StackPanel>
+
+                        <ComboBox
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            DisplayMemberPath="DisplayText"
+                            ItemsSource="{Binding ViewModel.NotificationProfileOptions}"
+                            SelectedItem="{Binding ViewModel.SelectedNotificationProfile, Mode=TwoWay}" />
+                    </Grid>
                 </StackPanel>
             </ui:Card>
 
@@ -244,6 +318,17 @@
                         FontSize="12"
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
                         Text="Когда мини-виджет открыт, опрос датчиков продолжается даже при сворачивании главного окна в трей."
+                        TextWrapping="Wrap" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,4"
+                        Content="Прозрачность оверлея для кликов (Click-Through)"
+                        IsChecked="{Binding ViewModel.IsOverlayClickThrough, Mode=TwoWay}" />
+                    <TextBlock
+                        Margin="0,0,0,14"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Клики мыши проходят сквозь оверлей в окна под ним. Удерживайте клавишу Alt, чтобы перетащить оверлей или нажать его кнопки."
                         TextWrapping="Wrap" />
 
                     <Grid Margin="0,0,0,14">
@@ -375,8 +460,12 @@
                             Content="Скорость сети (↓ / ↑)"
                             IsChecked="{Binding ViewModel.OverlayShowNetwork, Mode=TwoWay}" />
                         <CheckBox
+                            Margin="0,0,0,8"
                             Content="Статус VPN-туннеля"
                             IsChecked="{Binding ViewModel.OverlayShowVpn, Mode=TwoWay}" />
+                        <CheckBox
+                            Content="Раскладка клавиатуры (RU / EN)"
+                            IsChecked="{Binding ViewModel.OverlayShowInputLayout, Mode=TwoWay}" />
                     </UniformGrid>
 
                     <!-- Extra Appearance Options -->
@@ -460,6 +549,153 @@
                         FontSize="12"
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
                         Text="Передаёт аргументы --connect --minimized при запуске VPN-клиента."
+                        TextWrapping="Wrap" />
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Block 6: Discord RPC Integration -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="#5865F2"
+                            Symbol="Chat24" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Интеграция с Discord" />
+                    </StackPanel>
+
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontSize="14"
+                        FontWeight="Medium"
+                        Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                        Text="Discord Client ID" />
+
+                    <ui:TextBox
+                        Margin="0,0,0,6"
+                        PlaceholderText="Например: 1234567890123456789"
+                        Text="{Binding ViewModel.DiscordClientId, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock
+                        Margin="0,0,0,14"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Application ID вашего приложения из Discord Developer Portal для локального RPC (rpc scope). Добавьте Redirect URI http://127.0.0.1 в настройках OAuth2."
+                        TextWrapping="Wrap" />
+
+                    <TextBlock
+                        Margin="0,0,0,6"
+                        FontSize="14"
+                        FontWeight="Medium"
+                        Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                        Text="Discord Client Secret" />
+
+                    <ui:TextBox
+                        Margin="0,0,0,6"
+                        PlaceholderText="Введите Client Secret из Discord Developer Portal"
+                        Text="{Binding ViewModel.DiscordClientSecret, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+                    <TextBlock
+                        Margin="0,0,0,14"
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="Client Secret из раздела OAuth2 вашего приложения в Discord Developer Portal (необходим для обмена кода авторизации на access_token)."
+                        TextWrapping="Wrap" />
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,14"
+                        Content="Показывать голосовой канал в оверлее"
+                        IsChecked="{Binding ViewModel.IsDiscordOverlayEnabled, Mode=TwoWay}" />
+
+                    <DockPanel>
+                        <ui:Button
+                            DockPanel.Dock="Left"
+                            Appearance="Primary"
+                            Command="{Binding ViewModel.ConnectDiscordCommand}"
+                            Content="Подключить Discord"
+                            Icon="{ui:SymbolIcon PlugConnected20}"
+                            Padding="14,8">
+                            <ui:Button.Style>
+                                <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
+                                    <Setter Property="IsEnabled" Value="True" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ViewModel.IsDiscordAuthorizing}" Value="True">
+                                            <Setter Property="IsEnabled" Value="False" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ui:Button.Style>
+                        </ui:Button>
+
+                        <TextBlock
+                            Margin="14,0,0,0"
+                            VerticalAlignment="Center"
+                            FontSize="12"
+                            Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                            Text="{Binding ViewModel.DiscordConnectionStatus, StringFormat='Статус: {0}'}"
+                            TextTrimming="CharacterEllipsis" />
+                    </DockPanel>
+                </StackPanel>
+            </ui:Card>
+
+            <!-- Block 8: Global Hotkeys -->
+            <ui:Card Margin="0,0,0,14" Padding="20">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                        <ui:SymbolIcon
+                            Margin="0,0,10,0"
+                            FontSize="20"
+                            Foreground="#00B2FF"
+                            Symbol="Keyboard24" />
+                        <TextBlock
+                            VerticalAlignment="Center"
+                            FontSize="16"
+                            FontWeight="SemiBold"
+                            Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                            Text="Глобальные горячие клавиши" />
+                    </StackPanel>
+
+                    <ui:ToggleSwitch
+                        Margin="0,0,0,10"
+                        Content="Включить глобальные горячие клавиши (RegisterHotKey)"
+                        IsChecked="{Binding ViewModel.IsGlobalHotkeysEnabled, Mode=TwoWay}" />
+
+                    <Grid Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="220" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock
+                                FontSize="13"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="Дополнительный хоткей главного окна" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                FontSize="11.5"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="Дублирует Alt + Home для открытия/скрытия окна в трей." />
+                        </StackPanel>
+
+                        <ComboBox
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            ItemsSource="{Binding ViewModel.ToggleWindowHotkeyOptions}"
+                            SelectedItem="{Binding ViewModel.ToggleWindowHotkey, Mode=TwoWay}" />
+                    </Grid>
+
+                    <TextBlock
+                        FontSize="12"
+                        Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                        Text="• Alt + Home (и настраиваемый выше) — Показать / свернуть в трей главное окно&#x0a;• Alt + F1 — Показать / скрыть мини-виджет (оверлей)&#x0a;• Alt + F2 — Быстрая очистка ОЗУ (с кратким статусом на оверлее)&#x0a;• Alt + F3 — Подключить / отключить VPN-клиент&#x0a;• Alt + F5 — Принудительно переключить Игровой режим"
                         TextWrapping="Wrap" />
                 </StackPanel>
             </ui:Card>
