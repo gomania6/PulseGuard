@@ -37,7 +37,7 @@
                 FontSize="22"
                 FontWeight="SemiBold"
                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                Text="{Binding ViewModel.Title}" />
+                Text="{DynamicResource Loc.Mon.Title}" />
 
             <!-- 4 Metric Cards -->
             <UniformGrid Grid.Row="1" Columns="4">
@@ -84,7 +84,7 @@
                                 Command="{Binding ViewModel.ShowDriverHelpCommand}"
                                 Content="?"
                                 FontSize="11"
-                                ToolTip="Как включить датчики температуры?"
+                                ToolTip="{DynamicResource Loc.Mon.CpuHelpTooltip}"
                                 Visibility="{Binding ViewModel.IsCpuTempBlocked, Converter={StaticResource BooleanToVisibilityConverter}}" />
                         </StackPanel>
                         <TextBlock
@@ -146,7 +146,7 @@
                                 FontSize="13"
                                 FontWeight="SemiBold"
                                 Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="ОЗУ (RAM)" />
+                                Text="{DynamicResource Loc.Mon.RamTitle}" />
                         </DockPanel>
                         <TextBlock
                             FontSize="28"
@@ -179,12 +179,12 @@
                                 FontSize="13"
                                 FontWeight="SemiBold"
                                 Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Сеть" />
+                                Text="{DynamicResource Loc.Mon.NetworkTitle}" />
                         </DockPanel>
                         <TextBlock
                             FontSize="12"
                             Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                            Text="Скачивание (Download)" />
+                            Text="{DynamicResource Loc.Mon.Download}" />
                         <TextBlock
                             Margin="0,2,0,8"
                             FontSize="20"
@@ -194,7 +194,7 @@
                         <TextBlock
                             FontSize="12"
                             Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                            Text="Отдача (Upload)" />
+                            Text="{DynamicResource Loc.Mon.Upload}" />
                         <TextBlock
                             Margin="0,2,0,0"
                             FontSize="18"

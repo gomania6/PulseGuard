@@ -7,6 +7,7 @@ using PulseGuard.Modules.Monitoring;
 using PulseGuard.Modules.Overlay;
 using PulseGuard.Modules.Settings;
 using PulseGuard.Modules.Settings.Models;
+using PulseGuard.Services;
 
 namespace PulseGuard.ViewModels;
 
@@ -22,11 +23,17 @@ public partial class SettingsViewModel : ObservableObject
     private readonly MonitoringPollingService _monitoringPollingService;
     private readonly OverlayService _overlayService;
     private readonly DiscordRpcModule _discordRpcModule;
+    private readonly LocalizationService _localizationService;
 
     private bool _isSyncing;
 
     [ObservableProperty]
     private string _title = "Настройки";
+
+    [ObservableProperty]
+    private LanguageOption _selectedLanguageOption;
+
+    public IReadOnlyList<LanguageOption> LanguageOptions => LocalizationService.SupportedLanguages;
 
     [ObservableProperty]
     private bool _runAtStartup;
@@ -191,14 +198,17 @@ public partial class SettingsViewModel : ObservableObject
         StartupTaskSchedulerService startupTaskScheduler,
         MonitoringPollingService monitoringPollingService,
         OverlayService overlayService,
-        DiscordRpcModule discordRpcModule)
+        DiscordRpcModule discordRpcModule,
+        LocalizationService localizationService)
     {
         _settingsService = settingsService;
         _startupTaskScheduler = startupTaskScheduler;
         _monitoringPollingService = monitoringPollingService;
         _overlayService = overlayService;
         _discordRpcModule = discordRpcModule;
+        _localizationService = localizationService;
 
+        _selectedLanguageOption = LanguageOptions[0];
         _selectedPollingOption = PollingIntervalOptions[1];
         _selectedOverlayCorner = OverlayCornerOptions[1];
         _selectedOverlayLayout = OverlayLayoutOptions[0];
@@ -209,6 +219,8 @@ public partial class SettingsViewModel : ObservableObject
         _overlayService.VisibilityChanged += OnOverlayVisibilityChanged;
         _settingsService.SettingsChanged += OnSettingsChanged;
         _discordRpcModule.SnapshotChanged += OnDiscordSnapshotChanged;
+        _localizationService.LanguageChanged += _ => Title = _localizationService.Get("Loc.Set.Title", "Настройки");
+        Title = _localizationService.Get("Loc.Set.Title", "Настройки");
     }
 
     private void OnDiscordSnapshotChanged(DiscordVoiceSnapshot snapshot)
@@ -264,6 +276,9 @@ public partial class SettingsViewModel : ObservableObject
         _isSyncing = true;
         try
         {
+            string normalizedLang = LocalizationService.NormalizeLanguageCode(settings.Language);
+            SelectedLanguageOption = LanguageOptions.FirstOrDefault(o => o.Code == normalizedLang)
+                                     ?? LanguageOptions[0];
             RunAtStartup = settings.RunAtStartup;
             StartMinimizedToTray = settings.StartMinimizedToTray;
             MinimizeToTrayOnClose = settings.MinimizeToTrayOnClose;
@@ -342,6 +357,18 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         _settingsService.Update(s => s.RunAtStartup = enabled);
+    }
+
+    partial void OnSelectedLanguageOptionChanged(LanguageOption value)
+    {
+        if (_isSyncing || value is null)
+        {
+            return;
+        }
+
+        _settingsService.Update(s => s.Language = value.Code);
+        _localizationService.ApplyLanguage(value.Code);
+        StatusMessage = $"{_localizationService.Get("Loc.Set.LanguageLabel", "Язык интерфейса")}: {value.DisplayText}";
     }
 
     partial void OnStartMinimizedToTrayChanged(bool value)
@@ -695,6 +722,7 @@ public partial class SettingsViewModel : ObservableObject
         }
 
         _settingsService.ResetToDefaults();
+        _localizationService.ApplyLanguage(_settingsService.Current.Language);
         _overlayService.SetVisible(_settingsService.Current.IsOverlayEnabled);
         LoadFromSettings(_settingsService.Current);
         _monitoringPollingService.SetPollingInterval(_settingsService.Current.PollingIntervalMs);

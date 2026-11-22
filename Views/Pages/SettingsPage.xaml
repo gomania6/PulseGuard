@@ -20,7 +20,7 @@
                 FontSize="22"
                 FontWeight="SemiBold"
                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                Text="{Binding ViewModel.Title}" />
+                Text="{DynamicResource Loc.Set.Title}" />
 
             <!-- Block 1: Startup & Window Behavior -->
             <ui:Card Margin="0,0,0,14" Padding="20">
@@ -36,27 +36,54 @@
                             FontSize="16"
                             FontWeight="SemiBold"
                             Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                            Text="Запуск и поведение окна" />
+                            Text="{DynamicResource Loc.Set.StartupBlock}" />
                     </StackPanel>
+
+                    <Grid Margin="0,0,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="260" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,16,0">
+                            <TextBlock
+                                FontSize="14"
+                                FontWeight="Medium"
+                                Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
+                                Text="{DynamicResource Loc.Set.LanguageLabel}" />
+                            <TextBlock
+                                Margin="0,2,0,0"
+                                FontSize="12"
+                                Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
+                                Text="{DynamicResource Loc.Set.LanguageDesc}" />
+                        </StackPanel>
+
+                        <ComboBox
+                            Grid.Column="1"
+                            VerticalAlignment="Center"
+                            DisplayMemberPath="DisplayText"
+                            ItemsSource="{Binding ViewModel.LanguageOptions}"
+                            SelectedItem="{Binding ViewModel.SelectedLanguageOption, Mode=TwoWay}" />
+                    </Grid>
 
                     <ui:ToggleSwitch
                         Margin="0,0,0,4"
-                        Content="Запускать вместе с Windows"
+                        Content="{DynamicResource Loc.Set.RunAtStartup}"
                         IsChecked="{Binding ViewModel.RunAtStartup, Mode=TwoWay}" />
                     <TextBlock
                         Margin="0,0,0,12"
                         FontSize="12"
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                        Text="Создаёт задачу в Планировщике заданий Windows с повышенными правами (без изменения реестра)."
+                        Text="{DynamicResource Loc.Set.RunAtStartupDesc}"
                         TextWrapping="Wrap" />
 
                     <ui:ToggleSwitch
                         Margin="0,0,0,12"
-                        Content="Запускать свёрнутым в трей"
+                        Content="{DynamicResource Loc.Set.StartMinimized}"
                         IsChecked="{Binding ViewModel.StartMinimizedToTray, Mode=TwoWay}" />
 
                     <ui:ToggleSwitch
-                        Content="Сворачивать в трей при закрытии (крестик)"
+                        Content="{DynamicResource Loc.Set.MinimizeOnClose}"
                         IsChecked="{Binding ViewModel.MinimizeToTrayOnClose, Mode=TwoWay}" />
                 </StackPanel>
             </ui:Card>

@@ -36,7 +36,7 @@
                     VerticalAlignment="Center"
                     IsChecked="{Binding ViewModel.IsOverlayVisible, Mode=OneWay}"
                     Command="{Binding ViewModel.ToggleOverlayCommand}"
-                    ToolTip="Показать / скрыть мини-виджет (оверлей)">
+                    ToolTip="{DynamicResource Loc.Main.MiniWidgetTooltip}">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <ui:SymbolIcon
                             Margin="0,0,6,0"
@@ -45,7 +45,7 @@
                         <TextBlock
                             VerticalAlignment="Center"
                             FontSize="12"
-                            Text="Мини-виджет" />
+                            Text="{DynamicResource Loc.Main.MiniWidget}" />
                     </StackPanel>
                 </ToggleButton>
             </ui:TitleBar.TrailingContent>
@@ -60,35 +60,35 @@
             PaneDisplayMode="Left">
             <ui:NavigationView.MenuItems>
                 <ui:NavigationViewItem
-                    Content="Мониторинг"
+                    Content="{DynamicResource Loc.Nav.Monitoring}"
                     TargetPageType="{x:Type pages:MonitoringPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="Pulse24" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem
-                    Content="Оптимизация"
+                    Content="{DynamicResource Loc.Nav.Optimization}"
                     TargetPageType="{x:Type pages:OptimizationPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="Broom24" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem
-                    Content="Игровой режим"
+                    Content="{DynamicResource Loc.Nav.GameMode}"
                     TargetPageType="{x:Type pages:GameOptimizationPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="Games24" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem
-                    Content="VPN"
+                    Content="{DynamicResource Loc.Nav.Vpn}"
                     TargetPageType="{x:Type pages:VpnPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="Shield24" />
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
                 <ui:NavigationViewItem
-                    Content="Процессы"
+                    Content="{DynamicResource Loc.Nav.Processes}"
                     TargetPageType="{x:Type pages:ProcessesPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="AppsList24" />
@@ -98,7 +98,7 @@
 
             <ui:NavigationView.FooterMenuItems>
                 <ui:NavigationViewItem
-                    Content="Настройки"
+                    Content="{DynamicResource Loc.Nav.Settings}"
                     TargetPageType="{x:Type pages:SettingsPage}">
                     <ui:NavigationViewItem.Icon>
                         <ui:SymbolIcon Symbol="Settings24" />
@@ -125,35 +125,35 @@
             LeftClick="NotifyIcon_OnLeftClick"
             LeftDoubleClick="NotifyIcon_OnLeftClick"
             MenuOnRightClick="True"
-            TooltipText="PulseGuard — Системный монитор">
+            TooltipText="{DynamicResource Loc.Tray.Tooltip}">
             <tray:NotifyIcon.Menu>
                 <ContextMenu>
                     <ui:MenuItem
                         Command="{Binding ViewModel.ShowWindowCommand}"
-                        Header="Открыть"
+                        Header="{DynamicResource Loc.Tray.Open}"
                         Icon="{ui:SymbolIcon Open24}" />
                     <ui:MenuItem
                         Command="{Binding ViewModel.ToggleOverlayCommand}"
-                        Header="Показать / скрыть мини-виджет"
+                        Header="{DynamicResource Loc.Tray.ToggleOverlay}"
                         Icon="{ui:SymbolIcon PictureInPicture24}"
                         IsChecked="{Binding ViewModel.IsOverlayVisible, Mode=OneWay}" />
                     <ui:MenuItem
                         Command="{Binding ViewModel.ToggleOverlayClickThroughCommand}"
-                        Header="Прозрачность оверлея для кликов (Click-Through)"
+                        Header="{DynamicResource Loc.Tray.ClickThrough}"
                         Icon="{ui:SymbolIcon Cursor24}"
                         IsChecked="{Binding ViewModel.IsOverlayClickThrough, Mode=OneWay}" />
                     <ui:MenuItem
                         Command="{Binding ViewModel.ToggleVpnCommand}"
-                        Header="VPN: Подключить / Отключить"
+                        Header="{DynamicResource Loc.Tray.VpnToggle}"
                         Icon="{ui:SymbolIcon Shield24}" />
                     <ui:MenuItem
                         Command="{Binding ViewModel.QuickRamCleanCommand}"
-                        Header="Быстрая очистка ОЗУ"
+                        Header="{DynamicResource Loc.Tray.QuickRam}"
                         Icon="{ui:SymbolIcon Broom24}" />
                     <Separator />
                     <ui:MenuItem
                         Command="{Binding ViewModel.ExitApplicationCommand}"
-                        Header="Выход"
+                        Header="{DynamicResource Loc.Tray.Exit}"
                         Icon="{ui:SymbolIcon Power24}" />
                 </ContextMenu>
             </tray:NotifyIcon.Menu>

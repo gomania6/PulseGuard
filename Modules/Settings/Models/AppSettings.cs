@@ -47,6 +47,7 @@ public sealed class AppSettings
     private static readonly int[] AllowedIntervals = [500, 1000, 2000, 5000];
 
     // Block 1: Startup & window behavior
+    public string Language { get; set; } = "ru";
     public bool RunAtStartup { get; set; }
     public bool StartMinimizedToTray { get; set; } = true;
     public bool MinimizeToTrayOnClose { get; set; } = true;
@@ -142,6 +143,7 @@ public sealed class AppSettings
 
     public AppSettings Clone() => new()
     {
+        Language = Language,
         RunAtStartup = RunAtStartup,
         StartMinimizedToTray = StartMinimizedToTray,
         MinimizeToTrayOnClose = MinimizeToTrayOnClose,
@@ -205,6 +207,7 @@ public sealed class AppSettings
 
     public void Normalize()
     {
+        Language = Services.LocalizationService.NormalizeLanguageCode(Language);
         PinnedOverlayDeviceIds = (PinnedOverlayDeviceIds ?? [])
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.OrdinalIgnoreCase)

@@ -7,7 +7,7 @@
       mc:Ignorable="d"
       d:DesignHeight="640"
       d:DesignWidth="900"
-      Title="VPN">
+      Title="{DynamicResource Loc.Vpn.Title}">
 
     <ui:DynamicScrollViewer
         VerticalScrollBarVisibility="Auto"
@@ -19,7 +19,7 @@
                 FontSize="22"
                 FontWeight="SemiBold"
                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                Text="{Binding ViewModel.Title}" />
+                Text="{DynamicResource Loc.Vpn.Title}" />
 
             <!-- Main VPN Status & Controls -->
             <ui:Card Margin="0,0,0,14" Padding="20">
@@ -40,7 +40,7 @@
                                 <TextBlock
                                     FontSize="12"
                                     Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                    Text="Состояние подключения" />
+                                    Text="{DynamicResource Loc.Vpn.StateTitle}" />
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,0,0">
                                     <Ellipse
                                         Width="10"
@@ -67,7 +67,7 @@
                                 Padding="16,10" />
                             <ui:Button
                                 Command="{Binding ViewModel.RestartVpnCommand}"
-                                Content="Перезапустить"
+                                Content="{DynamicResource Loc.Vpn.Restart}"
                                 Icon="{ui:SymbolIcon ArrowSync20}"
                                 IsEnabled="{Binding ViewModel.CanControlVpn}"
                                 Padding="14,10" />
@@ -80,28 +80,28 @@
                     <UniformGrid Columns="4" Margin="0,0,0,12">
                         <Border Margin="0,0,8,8" Padding="12" Background="#14FFFFFF" CornerRadius="8">
                             <StackPanel>
-                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Сервер" />
+                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Vpn.Server}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="{Binding ViewModel.ServerText}" TextTrimming="CharacterEllipsis" />
                             </StackPanel>
                         </Border>
 
                         <Border Margin="0,0,8,8" Padding="12" Background="#14FFFFFF" CornerRadius="8">
                             <StackPanel>
-                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Внешний IP" />
+                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Vpn.ExternalIp}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="{Binding ViewModel.ExternalIpText}" />
                             </StackPanel>
                         </Border>
 
                         <Border Margin="0,0,8,8" Padding="12" Background="#14FFFFFF" CornerRadius="8">
                             <StackPanel>
-                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Пинг (1.1.1.1)" />
+                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Vpn.Ping}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="{Binding ViewModel.PingText}" />
                             </StackPanel>
                         </Border>
 
                         <Border Margin="0,0,0,8" Padding="12" Background="#14FFFFFF" CornerRadius="8">
                             <StackPanel>
-                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Качество канала" />
+                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Vpn.Quality}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{Binding ViewModel.QualityBrush}" Text="{Binding ViewModel.QualityText}" />
                             </StackPanel>
                         </Border>
@@ -110,28 +110,28 @@
                     <UniformGrid Columns="4">
                         <Border Margin="0,0,8,0" Padding="12" Background="#14FFFFFF" CornerRadius="8">
                             <StackPanel>
-                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Потери пакетов (Loss)" />
+                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Vpn.Loss}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{Binding ViewModel.QualityBrush}" Text="{Binding ViewModel.PacketLossText}" />
                             </StackPanel>
                         </Border>
 
                         <Border Margin="0,0,8,0" Padding="12" Background="#14FFFFFF" CornerRadius="8">
                             <StackPanel>
-                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Джиттер (Jitter)" />
+                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Vpn.Jitter}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{Binding ViewModel.QualityBrush}" Text="{Binding ViewModel.JitterText}" />
                             </StackPanel>
                         </Border>
 
                         <Border Margin="0,0,8,0" Padding="12" Background="#14FFFFFF" CornerRadius="8">
                             <StackPanel>
-                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Процесс клиента" />
+                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Vpn.Process}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="{Binding ViewModel.ProcessStateText}" />
                             </StackPanel>
                         </Border>
 
                         <Border Padding="12" Background="#14FFFFFF" CornerRadius="8">
                             <StackPanel>
-                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Конфигурация" />
+                                <TextBlock FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Vpn.Config}" />
                                 <TextBlock Margin="0,4,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="{Binding ViewModel.ConfigStateText}" />
                             </StackPanel>
                         </Border>
@@ -154,13 +154,13 @@
                         FontSize="16"
                         FontWeight="SemiBold"
                         Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                        Text="Настройки VPN-клиента" />
+                        Text="{DynamicResource Loc.Vpn.SettingsTitle}" />
 
                     <TextBlock
                         Margin="0,0,0,6"
                         FontSize="12"
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                        Text="Путь к исполняемому файлу (.exe):" />
+                        Text="{DynamicResource Loc.Vpn.ExePathLabel}" />
 
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
@@ -170,27 +170,27 @@
                         <ui:TextBox
                             Grid.Column="0"
                             Margin="0,0,8,0"
-                            PlaceholderText="Например: C:\Program Files\WireGuard\wireguard.exe"
+                            PlaceholderText="{DynamicResource Loc.Vpn.ExePlaceholder}"
                             Text="{Binding ViewModel.VpnExecutablePath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <ui:Button
                             Grid.Column="1"
                             Command="{Binding ViewModel.BrowseVpnExecutableCommand}"
-                            Content="Обзор..."
+                            Content="{DynamicResource Loc.Vpn.Browse}"
                             Icon="{ui:SymbolIcon FolderOpen24}" />
                     </Grid>
 
                     <ui:ToggleSwitch
                         Margin="0,0,0,8"
-                        Content="Автозапуск VPN при старте PulseGuard"
+                        Content="{DynamicResource Loc.Vpn.AutoStart}"
                         IsChecked="{Binding ViewModel.VpnAutoStart, Mode=TwoWay}" />
 
                     <ui:ToggleSwitch
                         Margin="0,0,0,8"
-                        Content="Запускать VPN свёрнутым (--connect --minimized)"
+                        Content="{DynamicResource Loc.Vpn.StartMinimized}"
                         IsChecked="{Binding ViewModel.VpnStartMinimized, Mode=TwoWay}" />
 
                     <ui:ToggleSwitch
-                        Content="Показывать индикатор VPN в мини-виджете (оверлее)"
+                        Content="{DynamicResource Loc.Vpn.ShowInOverlay}"
                         IsChecked="{Binding ViewModel.OverlayShowVpn, Mode=TwoWay}" />
                 </StackPanel>
             </ui:Card>

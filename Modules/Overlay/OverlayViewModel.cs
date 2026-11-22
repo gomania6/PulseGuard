@@ -891,8 +891,16 @@ public sealed partial class OverlayViewModel : ObservableObject, IDisposable
             : string.Empty;
     }
 
+    private bool _disposed;
+
     public void Dispose()
     {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
         _pollingService.MetricsUpdated -= OnMetricsUpdated;
         _settingsService.SettingsChanged -= OnSettingsChanged;
         _vpnService.StatusChanged -= OnVpnStatusChanged;
@@ -903,17 +911,33 @@ public sealed partial class OverlayViewModel : ObservableObject, IDisposable
         _inputLayoutModule.LayoutChanged -= OnInputLayoutChanged;
         _playtimeTrackerModule.StatsUpdated -= OnPlaytimeStatsUpdated;
         _stutterMonitorModule.StutterDetected -= OnStutterDetected;
-        _transientStatusCts?.Cancel();
-        _transientStatusCts?.Dispose();
-        _layoutHighlightCts?.Cancel();
-        _layoutHighlightCts?.Dispose();
-        _stutterAlertCts?.Cancel();
-        _stutterAlertCts?.Dispose();
+        CancelAndDisposeCts(ref _transientStatusCts);
+        CancelAndDisposeCts(ref _layoutHighlightCts);
+        CancelAndDisposeCts(ref _stutterAlertCts);
         _gameSessionTimer.Stop();
         foreach (var participant in DiscordParticipants)
         {
             participant.CancelAnimations();
         }
+    }
+
+    private static void CancelAndDisposeCts(ref CancellationTokenSource? cts)
+    {
+        if (cts is null)
+        {
+            return;
+        }
+
+        try
+        {
+            cts.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+
+        cts.Dispose();
+        cts = null;
     }
 }
 

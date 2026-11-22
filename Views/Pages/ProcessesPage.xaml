@@ -7,7 +7,7 @@
       mc:Ignorable="d"
       d:DesignHeight="640"
       d:DesignWidth="900"
-      Title="Процессы">
+      Title="{DynamicResource Loc.Proc.Title}">
 
     <Page.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -61,7 +61,7 @@
                 FontSize="22"
                 FontWeight="SemiBold"
                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                Text="{Binding ViewModel.Title}" />
+                Text="{DynamicResource Loc.Proc.Title}" />
         </DockPanel>
 
         <!-- Top Resource-Consuming Applications -->
@@ -71,7 +71,7 @@
                 FontSize="13"
                 FontWeight="SemiBold"
                 Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                Text="Топ нагружающих приложений" />
+                Text="{DynamicResource Loc.Proc.TopTitle}" />
 
             <UniformGrid Columns="3">
                 <!-- CPU Leader -->
@@ -88,7 +88,7 @@
                             <TextBlock
                                 FontSize="11"
                                 Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Лидер по CPU" />
+                                Text="{DynamicResource Loc.Proc.CpuLeader}" />
                             <TextBlock
                                 Margin="0,2,0,0"
                                 FontSize="15"
@@ -119,7 +119,7 @@
                             <TextBlock
                                 FontSize="11"
                                 Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Лидер по ОЗУ" />
+                                Text="{DynamicResource Loc.Proc.RamLeader}" />
                             <TextBlock
                                 Margin="0,2,0,0"
                                 FontSize="15"
@@ -150,7 +150,7 @@
                             <TextBlock
                                 FontSize="11"
                                 Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Лидер по Диску" />
+                                Text="{DynamicResource Loc.Proc.DiskLeader}" />
                             <TextBlock
                                 Margin="0,2,0,0"
                                 FontSize="15"
@@ -181,13 +181,13 @@
                 Margin="0,0,16,0"
                 ClearButtonEnabled="True"
                 Icon="{ui:SymbolIcon Search24}"
-                PlaceholderText="Поиск по названию процесса..."
+                PlaceholderText="{DynamicResource Loc.Proc.SearchPlaceholder}"
                 Text="{Binding ViewModel.SearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
             <ui:ToggleSwitch
                 Grid.Column="1"
                 VerticalAlignment="Center"
-                Content="Скрыть системные процессы"
+                Content="{DynamicResource Loc.Proc.HideSystem}"
                 IsChecked="{Binding ViewModel.HideSystemProcesses, Mode=TwoWay}" />
         </Grid>
 
@@ -262,7 +262,7 @@
                             FontSize="12"
                             FontWeight="SemiBold"
                             Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                            Text="Действия" />
+                            Text="{DynamicResource Loc.Proc.Actions}" />
                     </Grid>
                 </Border>
 
@@ -334,7 +334,7 @@
                                         FontSize="14"
                                         Foreground="#FFB900"
                                         Symbol="ShieldCheckmark24"
-                                        ToolTip="Защищённый системный процесс Windows"
+                                        ToolTip="{DynamicResource Loc.Proc.ProtectedTooltip}"
                                         Visibility="{Binding IsSystemProtected, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                     <TextBlock
                                         FontWeight="Medium"

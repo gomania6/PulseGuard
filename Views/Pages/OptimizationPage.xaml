@@ -7,7 +7,7 @@
       mc:Ignorable="d"
       d:DesignHeight="640"
       d:DesignWidth="900"
-      Title="Оптимизация">
+      Title="{DynamicResource Loc.Opt.Title}">
 
     <ui:DynamicScrollViewer
         VerticalScrollBarVisibility="Auto"
@@ -20,7 +20,7 @@
                 FontSize="22"
                 FontWeight="SemiBold"
                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                Text="{Binding ViewModel.Title}" />
+                Text="{DynamicResource Loc.Opt.Title}" />
 
             <!-- Card 1: Safe RAM Cleaner -->
             <ui:Card Margin="0,0,0,14" Padding="20">
@@ -43,7 +43,7 @@
                                     FontSize="16"
                                     FontWeight="SemiBold"
                                     Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                    Text="Безопасная очистка ОЗУ" />
+                                    Text="{DynamicResource Loc.Opt.RamTitle}" />
                             </StackPanel>
 
                             <TextBlock
@@ -66,7 +66,7 @@
                             VerticalAlignment="Center"
                             Appearance="Primary"
                             Command="{Binding ViewModel.CleanRamCommand}"
-                            Content="Освободить память"
+                            Content="{DynamicResource Loc.Opt.FreeRam}"
                             Icon="{ui:SymbolIcon Broom24}"
                             IsEnabled="{Binding ViewModel.CanCleanRam}"
                             Padding="16,10" />
@@ -76,7 +76,7 @@
 
                     <ui:ToggleSwitch
                         Margin="0,0,0,10"
-                        Content="Планировщик авто-очистки ОЗУ при превышении порога / по расписанию"
+                        Content="{DynamicResource Loc.Opt.AutoRamToggle}"
                         IsChecked="{Binding ViewModel.IsAutoRamCleanEnabled, Mode=TwoWay}" />
 
                     <Grid Margin="0,0,0,8">
@@ -96,7 +96,7 @@
                                 <TextBlock
                                     FontSize="13"
                                     Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                    Text="Порог авто-очистки ОЗУ (65–95 %)" />
+                                    Text="{DynamicResource Loc.Opt.AutoRamThreshold}" />
                             </DockPanel>
                             <Slider
                                 Margin="0,4,0,0"
@@ -131,14 +131,14 @@
                             <ui:Button
                                 Margin="0,0,8,0"
                                 Command="{Binding ViewModel.AnalyzeTempCommand}"
-                                Content="Анализировать"
+                                Content="{DynamicResource Loc.Opt.Analyze}"
                                 Icon="{ui:SymbolIcon Search24}"
                                 IsEnabled="{Binding ViewModel.CanAnalyzeTemp}"
                                 Padding="14,8" />
                             <ui:Button
                                 Appearance="Primary"
                                 Command="{Binding ViewModel.CleanTempCommand}"
-                                Content="Очистить выбранное"
+                                Content="{DynamicResource Loc.Opt.CleanSelected}"
                                 Icon="{ui:SymbolIcon Delete24}"
                                 IsEnabled="{Binding ViewModel.CanCleanTemp}"
                                 Padding="14,8" />
@@ -155,7 +155,7 @@
                                 FontSize="16"
                                 FontWeight="SemiBold"
                                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="Безопасная очистка кэша и временных файлов" />
+                                Text="{DynamicResource Loc.Opt.TempTitle}" />
                         </StackPanel>
                     </DockPanel>
 
@@ -175,7 +175,7 @@
                             Grid.Row="0"
                             Grid.Column="0"
                             Margin="0,0,0,6"
-                            Content="Временные файлы пользователя (%TEMP%)"
+                            Content="{DynamicResource Loc.Opt.UserTemp}"
                             IsChecked="{Binding ViewModel.IncludeUserTemp, Mode=TwoWay}" />
                         <TextBlock
                             Grid.Row="0"
@@ -190,7 +190,7 @@
                             Grid.Row="1"
                             Grid.Column="0"
                             Margin="0,0,0,6"
-                            Content="Временные файлы системы (C:\Windows\Temp)"
+                            Content="{DynamicResource Loc.Opt.WinTemp}"
                             IsChecked="{Binding ViewModel.IncludeSystemTemp, Mode=TwoWay}" />
                         <TextBlock
                             Grid.Row="1"
@@ -205,7 +205,7 @@
                             Grid.Row="2"
                             Grid.Column="0"
                             Margin="0,0,0,6"
-                            Content="Кэш шейдеров Direct3D (%LOCALAPPDATA%\D3DSCache)"
+                            Content="{DynamicResource Loc.Opt.D3dCache}"
                             IsChecked="{Binding ViewModel.IncludeD3dShaderCache, Mode=TwoWay}" />
                         <TextBlock
                             Grid.Row="2"
@@ -219,7 +219,7 @@
                         <CheckBox
                             Grid.Row="3"
                             Grid.Column="0"
-                            Content="Корзина Windows"
+                            Content="{DynamicResource Loc.Opt.RecycleBin}"
                             IsChecked="{Binding ViewModel.IncludeRecycleBin, Mode=TwoWay}" />
                         <TextBlock
                             Grid.Row="3"
@@ -249,14 +249,14 @@
                                 Margin="0,0,8,0"
                                 Appearance="Secondary"
                                 Command="{Binding ViewModel.DiagnoseNetworkCommand}"
-                                Content="Проверить DNS"
+                                Content="{DynamicResource Loc.Opt.CheckDns}"
                                 Icon="{ui:SymbolIcon Search24}"
                                 IsEnabled="{Binding ViewModel.CanRunNetworkAction}"
                                 Padding="12,8" />
                             <ui:Button
                                 Appearance="Primary"
                                 Command="{Binding ViewModel.OptimizeNetworkCommand}"
-                                Content="Ускорить интернет"
+                                Content="{DynamicResource Loc.Opt.SpeedUpNet}"
                                 Icon="{ui:SymbolIcon Flash24}"
                                 IsEnabled="{Binding ViewModel.CanRunNetworkAction}"
                                 Padding="14,8" />
@@ -273,7 +273,7 @@
                                 FontSize="16"
                                 FontWeight="SemiBold"
                                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="Оптимизация интернета и DNS" />
+                                Text="{DynamicResource Loc.Opt.NetTitle}" />
                         </StackPanel>
                     </DockPanel>
 
@@ -296,13 +296,13 @@
                             Margin="0,0,8,0"
                             Appearance="Secondary"
                             Command="{Binding ViewModel.FlushDnsCommand}"
-                            Content="Очистить кэш DNS"
+                            Content="{DynamicResource Loc.Opt.FlushDns}"
                             IsEnabled="{Binding ViewModel.CanRunNetworkAction}"
                             Padding="10,6" />
                         <ui:Button
                             Appearance="Secondary"
                             Command="{Binding ViewModel.ResetDnsToDhcpCommand}"
-                            Content="Сбросить DNS (DHCP)"
+                            Content="{DynamicResource Loc.Opt.ResetDns}"
                             IsEnabled="{Binding ViewModel.CanRunNetworkAction}"
                             Padding="10,6" />
                     </StackPanel>

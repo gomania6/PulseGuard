@@ -51,6 +51,7 @@ public partial class App : Application
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<TrayNotificationService>();
         services.AddSingleton<GlobalHotkeyService>();
+        services.AddSingleton<LocalizationService>();
 
         // Settings
         services.AddSingleton<SettingsService>();
@@ -171,6 +172,7 @@ public partial class App : Application
         ApplicationThemeManager.Apply(ApplicationTheme.Dark);
 
         var settingsService = Services.GetRequiredService<SettingsService>();
+        Services.GetRequiredService<LocalizationService>().ApplyLanguage(settingsService.Current.Language);
         SessionEnding += (_, _) =>
         {
             (Services.GetService(typeof(PlaytimeTrackerModule)) as PlaytimeTrackerModule)?.FlushSave();

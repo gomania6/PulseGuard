@@ -7,7 +7,7 @@
       mc:Ignorable="d"
       d:DesignHeight="800"
       d:DesignWidth="900"
-      Title="Игровые оптимизации">
+      Title="{DynamicResource Loc.Game.Title}">
 
     <ui:DynamicScrollViewer
         VerticalScrollBarVisibility="Auto"
@@ -19,7 +19,7 @@
                 FontSize="22"
                 FontWeight="SemiBold"
                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                Text="{Binding ViewModel.Title}" />
+                Text="{DynamicResource Loc.Game.Title}" />
 
             <!-- Card 1: Anti-Cheat Protection & Full Rollback -->
             <ui:Card Margin="0,0,0,14" Padding="20">
@@ -41,7 +41,7 @@
                                 FontSize="16"
                                 FontWeight="SemiBold"
                                 Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                Text="Защита античитов и бэкап реестра" />
+                                Text="{DynamicResource Loc.Game.AntiCheatTitle}" />
                         </StackPanel>
 
                         <TextBlock
@@ -65,13 +65,13 @@
                             Margin="0,0,8,0"
                             Appearance="Secondary"
                             Command="{Binding ViewModel.RefreshAntiCheatCommand}"
-                            Content="Проверить"
+                            Content="{DynamicResource Loc.Game.Check}"
                             Icon="{ui:SymbolIcon ArrowClockwise24}"
                             Padding="12,10" />
                         <ui:Button
                             Appearance="Caution"
                             Command="{Binding ViewModel.FullRollbackCommand}"
-                            Content="Вернуть как было (Полный откат)"
+                            Content="{DynamicResource Loc.Game.FullRollback}"
                             Icon="{ui:SymbolIcon ArrowUndo24}"
                             IsEnabled="{Binding ViewModel.CanRollback}"
                             Padding="14,10" />
@@ -93,7 +93,7 @@
                             FontSize="16"
                             FontWeight="SemiBold"
                             Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                            Text="Профили оптимизации" />
+                            Text="{DynamicResource Loc.Game.ProfilesTitle}" />
                     </StackPanel>
 
                     <Grid Margin="0,0,0,12">
@@ -125,11 +125,11 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0">
-                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#00E5A0" Text="Киберспорт (Anti-Cheat Ready)" TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,2,0,6" FontSize="11" FontWeight="Medium" Foreground="#38BDF8" Text="Рекомендуемый по умолчанию" />
-                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Макс. производительность + CPMINCORES 100, IFEO (CpuPriorityClass=3), Game Mode, GameDVR Off, MMCSS Games, SwapEffectUpgradeEnable (Win11), Standby List и заморозка WhiteList." TextWrapping="Wrap" />
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#00E5A0" Text="{DynamicResource Loc.Game.EsportsTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,2,0,6" FontSize="11" FontWeight="Medium" Foreground="#38BDF8" Text="{DynamicResource Loc.Game.EsportsSub}" />
+                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.EsportsDesc}" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Primary" Command="{Binding ViewModel.ApplyEsportsProfileCommand}" Content="Применить" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
+                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Primary" Command="{Binding ViewModel.ApplyEsportsProfileCommand}" Content="{DynamicResource Loc.Game.Apply}" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
                             </Grid>
                         </Border>
 
@@ -153,11 +153,11 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0">
-                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#A78BFA" Text="Максимальный FPS (Single-Player)" TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,2,0,6" FontSize="11" Foreground="#FFB900" Text="Расширенный тюнинг ОС и сети" />
-                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Всё из «Киберспорт» + отключение прозрачности/анимаций окон, фоновых UWP, алгоритма Нейгла (TcpAckFrequency/TCPNoDelay) и NetworkThrottlingIndex." TextWrapping="Wrap" />
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#A78BFA" Text="{DynamicResource Loc.Game.MaxFpsTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,2,0,6" FontSize="11" Foreground="#FFB900" Text="{DynamicResource Loc.Game.MaxFpsSub}" />
+                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.MaxFpsDesc}" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Secondary" Command="{Binding ViewModel.ApplyMaxFpsProfileCommand}" Content="Применить" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
+                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Secondary" Command="{Binding ViewModel.ApplyMaxFpsProfileCommand}" Content="{DynamicResource Loc.Game.Apply}" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
                             </Grid>
                         </Border>
 
@@ -181,11 +181,11 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <StackPanel Grid.Row="0">
-                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#38BDF8" Text="Обычный режим (Сброс)" TextWrapping="Wrap" />
-                                    <TextBlock Margin="0,2,0,6" FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Заводские параметры Windows" />
-                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Безопасный возврат всех ключей реестра из registry_backup.json, восстановление схемы питания «Сбалансированная», запуск служб и разморозка процессов." TextWrapping="Wrap" />
+                                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="#38BDF8" Text="{DynamicResource Loc.Game.ResetTitle}" TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,2,0,6" FontSize="11" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.ResetSub}" />
+                                    <TextBlock FontSize="11.5" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.ResetDesc}" TextWrapping="Wrap" />
                                 </StackPanel>
-                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Secondary" Command="{Binding ViewModel.ApplyNormalResetProfileCommand}" Content="Сбросить" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
+                                <ui:Button Grid.Row="1" Margin="0,12,0,0" HorizontalAlignment="Stretch" Appearance="Secondary" Command="{Binding ViewModel.ApplyNormalResetProfileCommand}" Content="{DynamicResource Loc.Game.ResetBtn}" IsEnabled="{Binding ViewModel.CanApplyProfile}" />
                             </Grid>
                         </Border>
                     </Grid>
@@ -193,10 +193,10 @@
                     <StackPanel Margin="0,4,0,10">
                         <CheckBox
                             Margin="0,0,0,6"
-                            Content="Останавливать SysMain и WSearch в профиле «Максимальный FPS» (предупреждение: замедлит поиск Windows до сброса/перезагрузки)"
+                            Content="{DynamicResource Loc.Game.StopSysMain}"
                             IsChecked="{Binding ViewModel.StopSysMainAndWSearchInMaxFps, Mode=TwoWay}" />
                         <CheckBox
-                            Content="Отключить HVCI (Memory Integrity) в профиле «Максимальный FPS» (требуется перезагрузка)"
+                            Content="{DynamicResource Loc.Game.DisableHvci}"
                             IsChecked="{Binding ViewModel.DisableHvciInMaxFps, Mode=TwoWay}"
                             IsEnabled="{Binding ViewModel.IsHvciOptionEnabled}"
                             ToolTip="{Binding ViewModel.HvciOptionTooltip}"
@@ -210,7 +210,7 @@
                         FontSize="12"
                         FontWeight="Medium"
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                        Text="WhiteList заморозки фоновых программ во время игры (NtSuspendProcess с авто-разморозкой):" />
+                        Text="{DynamicResource Loc.Game.WhiteListLabel}" />
 
                     <ItemsControl ItemsSource="{Binding ViewModel.WhitelistSuspendApps}">
                         <ItemsControl.ItemsPanel>
@@ -259,14 +259,14 @@
                                     FontSize="16"
                                     FontWeight="SemiBold"
                                     Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                    Text="Игровой режим (Game Mode)" />
+                                    Text="{DynamicResource Loc.Game.GameModeTitle}" />
                             </StackPanel>
 
                             <TextBlock
                                 Margin="0,8,0,0"
                                 FontSize="13"
                                 Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="Переключает схему питания на максимальную производительность, устанавливает таймер 0.5 мс, очищает Standby List и ОЗУ, приостанавливает выбранные по WhiteList фоновые приложения и не затрагивает игры, античиты, Steam или VPN. При выключении всё полностью восстанавливается."
+                                Text="{DynamicResource Loc.Game.GameModeDesc}"
                                 TextWrapping="Wrap" />
 
                             <TextBlock
@@ -289,12 +289,12 @@
 
                     <ui:ToggleSwitch
                         Margin="0,0,0,8"
-                        Content="Автоматический Игровой режим (при запуске игр)"
+                        Content="{DynamicResource Loc.Game.AutoGameMode}"
                         IsChecked="{Binding ViewModel.IsAutoGameModeEnabled, Mode=TwoWay}" />
 
                     <ui:ToggleSwitch
                         Margin="0,0,0,12"
-                        Content="Определять полноэкранные приложения (кроме проводника, браузеров и плееров)"
+                        Content="{DynamicResource Loc.Game.DetectFullscreen}"
                         IsChecked="{Binding ViewModel.DetectFullscreenApps, Mode=TwoWay}" />
 
                     <TextBlock
@@ -302,7 +302,7 @@
                         FontSize="12"
                         FontWeight="Medium"
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                        Text="Список процессов игр и лаунчеров (.exe) (также используется для IFEO в профилях):" />
+                        Text="{DynamicResource Loc.Game.ExeListLabel}" />
 
                     <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
@@ -312,13 +312,13 @@
                         <ui:TextBox
                             Grid.Column="0"
                             Margin="0,0,8,0"
-                            PlaceholderText="Например: stalker2.exe"
+                            PlaceholderText="{DynamicResource Loc.Game.ExePlaceholder}"
                             Text="{Binding ViewModel.NewGameProcessName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         <ui:Button
                             Grid.Column="1"
                             Appearance="Secondary"
                             Command="{Binding ViewModel.AddGameProcessCommand}"
-                            Content="Добавить"
+                            Content="{DynamicResource Loc.Game.Add}"
                             Icon="{ui:SymbolIcon Add16}" />
                     </Grid>
 
@@ -341,7 +341,7 @@
                                             CommandParameter="{Binding}"
                                             Content="×"
                                             FontSize="12"
-                                            ToolTip="Удалить из списка" />
+                                            ToolTip="{DynamicResource Loc.Game.RemoveTooltip}" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -364,14 +364,14 @@
 
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <ui:SymbolIcon Margin="0,0,10,0" FontSize="22" Foreground="#38BDF8" Symbol="Timer24" />
-                            <TextBlock VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="Игровое время" />
+                            <TextBlock VerticalAlignment="Center" FontSize="16" FontWeight="SemiBold" Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}" Text="{DynamicResource Loc.Game.PlaytimeTitle}" />
                         </StackPanel>
                     </DockPanel>
 
                     <TextBlock
                         FontSize="12"
                         Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                        Text="Пока нет записанных игровых сессий. Запустите игру из списка Игрового режима или в полноэкранном режиме.">
+                        Text="{DynamicResource Loc.Game.PlaytimeEmpty}">
                         <TextBlock.Style>
                             <Style TargetType="TextBlock">
                                 <Setter Property="Visibility" Value="Visible" />
@@ -435,7 +435,7 @@
                                     FontSize="14"
                                     FontWeight="SemiBold"
                                     Foreground="{ui:ThemeResource TextFillColorPrimaryBrush}"
-                                    Text="Сводка по дням" />
+                                    Text="{DynamicResource Loc.Game.DailySummary}" />
                             </DockPanel>
 
                             <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
@@ -443,7 +443,7 @@
                                     Margin="0,0,6,0"
                                     Padding="10,5"
                                     Command="{Binding ViewModel.SelectSummaryTodayCommand}"
-                                    Content="Сегодня">
+                                    Content="{DynamicResource Loc.Game.Today}">
                                     <ui:Button.Style>
                                         <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                             <Setter Property="Appearance" Value="Secondary" />
@@ -460,7 +460,7 @@
                                     Margin="0,0,6,0"
                                     Padding="10,5"
                                     Command="{Binding ViewModel.SelectSummaryYesterdayCommand}"
-                                    Content="Вчера">
+                                    Content="{DynamicResource Loc.Game.Yesterday}">
                                     <ui:Button.Style>
                                         <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                             <Setter Property="Appearance" Value="Secondary" />
@@ -476,7 +476,7 @@
                                 <ui:Button
                                     Padding="10,5"
                                     Command="{Binding ViewModel.SelectSummaryLast7DaysCommand}"
-                                    Content="За 7 дней">
+                                    Content="{DynamicResource Loc.Game.Last7Days}">
                                     <ui:Button.Style>
                                         <Style TargetType="ui:Button" BasedOn="{StaticResource {x:Type ui:Button}}">
                                             <Setter Property="Appearance" Value="Secondary" />
@@ -493,7 +493,7 @@
                             <TextBlock
                                 FontSize="12"
                                 Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}"
-                                Text="За выбранный период игровых сессий не зафиксировано.">
+                                Text="{DynamicResource Loc.Game.NoSessionsPeriod}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Visibility" Value="Visible" />
@@ -549,7 +549,7 @@
                                         Appearance="Secondary"
                                         Command="{Binding ViewModel.PreviousCalendarMonthCommand}"
                                         Content="&lt;"
-                                        ToolTip="Предыдущий месяц" />
+                                        ToolTip="{DynamicResource Loc.Game.PrevMonth}" />
 
                                     <TextBlock
                                         Grid.Column="1"
@@ -568,17 +568,17 @@
                                         Appearance="Secondary"
                                         Command="{Binding ViewModel.NextCalendarMonthCommand}"
                                         Content="&gt;"
-                                        ToolTip="Следующий месяц" />
+                                        ToolTip="{DynamicResource Loc.Game.NextMonth}" />
                                 </Grid>
 
                                 <UniformGrid Columns="7" Margin="0,0,0,6">
-                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Пн" />
-                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Вт" />
-                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Ср" />
-                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Чт" />
-                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Пт" />
-                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Сб" />
-                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="Вс" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.Mon}" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.Tue}" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.Wed}" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.Thu}" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.Fri}" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.Sat}" />
+                                    <TextBlock HorizontalAlignment="Center" FontSize="11" FontWeight="Medium" Foreground="{ui:ThemeResource TextFillColorSecondaryBrush}" Text="{DynamicResource Loc.Game.Sun}" />
                                 </UniformGrid>
 
                                 <ItemsControl Height="228" ItemsSource="{Binding ViewModel.CalendarDays}">
